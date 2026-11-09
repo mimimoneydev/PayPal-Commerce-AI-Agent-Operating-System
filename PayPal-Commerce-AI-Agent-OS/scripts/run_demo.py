@@ -9,6 +9,7 @@
     python scripts/run_demo.py entertainment       # API :8003 + storefront :3003
     python scripts/run_demo.py retail --merchant   # API :8000 + merchant portal :3100
     python scripts/run_demo.py retail --all        # API :8000 + storefront :3000 + portal :3100
+    python scripts/run_demo.py retail --no-paypal  # explicit offline mode, no payment calls
 
 Boots uvicorn and the Next.js dev server(s), waits until they answer, prints the URLs, and
 stops everything on Ctrl-C. Python packages and the examples/ npm workspace are installed on
@@ -16,6 +17,11 @@ first run. Ports are preferences: this vertical's API already running on its por
 any other busy port moves the server to the next free one, and the web apps are pointed at
 wherever the API is. Chat credentials come from the environment, the vertical's .env, the
 repo-root .env, then the SDK's credential chain; browsing and /showcase need none.
+
+PayPal sandbox checkout is ON by default: whenever PAYPAL_CLIENT_ID and
+PAYPAL_CLIENT_SECRET are present, the host installs the PayPal routes and the agent's
+create_paypal_order tool without any second opt-in. Missing credentials produce a loud
+warning and an explicitly offline demo. --no-paypal is the deliberate offline switch.
 """
 
 from __future__ import annotations
@@ -64,7 +70,7 @@ PYTHON_MODULES = (
     "dotenv",
 )
 
-GREEN, YELLOW, DIM, RESET = "\033[32m", "\033[33m", "\033[2m", "\033[0m"
+GREEN, YELLOW, RED, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033[2m", "\033[0m"
 
 
 def port_in_use(port: int) -> bool:
@@ -92,6 +98,51 @@ def env_file_has_key(path: Path) -> bool:
         ):
             return True
     return False
+
+
+def paypal_credentials(vertical: str) -> tuple[bool, str]:
+    """Both sandbox credentials, from the process env or the .env files the API reads.
+
+    The host's load order is process env, then the vertical's .env, then the repo-root
+    .env, all with override=False; this mirrors it without ever printing a value.
+    """
+    from dotenv import dotenv_values
+
+    values: dict[str, str] = {}
+    for path in (REPO_ROOT / ".env", EXAMPLES_DIR / vertical / ".env"):
+        if path.exists():
+            values.update({k: v for k, v in dotenv_values(path).items() if v})
+    for key in ("PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"):
+        if os.environ.get(key, "").strip():
+            values[key] = os.environ[key]
+    missing = [
+        key
+        for key in ("PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET")
+        if not str(values.get(key, "")).strip()
+    ]
+    if missing:
+        return False, ", ".join(missing)
+    return True, "environment / .env"
+
+
+def warn_missing_paypal(vertical: str, missing: str) -> None:
+    """Loud, actionable warning: the judged PayPal flow cannot run without credentials."""
+    print(
+        f"\n{RED}==========================================================================\n"
+        "  PAYPAL CHECKOUT IS ON BY DEFAULT, BUT CREDENTIALS ARE MISSING\n"
+        "==========================================================================\n"
+        f"  Missing: {missing}\n"
+        "  This run starts in OFFLINE mode. Chat, catalog, and the cart work, but no\n"
+        "  PayPal order can be created and create_paypal_order will say checkout is\n"
+        "  not configured. Judges will not see a real transaction.\n\n"
+        "  To enable the real sandbox flow:\n"
+        "    cp .env.example .env   # at the repo root\n"
+        "    # fill PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET from your sandbox app\n"
+        "    export PAYPAL_ENVIRONMENT=sandbox\n"
+        "    python scripts/demo_paypal_order.py   # records real order + capture IDs\n\n"
+        f"  For an intentionally offline demo: python scripts/run_demo.py {vertical} --no-paypal\n"
+        f"=========================================================================={RESET}\n"
+    )
 
 
 def healthy_demo_api(port: int, store: str) -> bool:
@@ -169,11 +220,20 @@ def spawn(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> s
     )
 
 
-def start_api(vertical: str, port: int, federated: bool) -> subprocess.Popen:
+def start_api(
+    vertical: str, port: int, federated: bool, no_paypal: bool = False
+) -> subprocess.Popen:
     env = os.environ.copy()
     # Checkout handoffs need an absolute backend-authored URL. This is public routing
-    # metadata, not a credential; PayPal remains disabled unless both credentials exist.
+    # metadata, not a credential. With credentials present PayPal is enabled by default;
+    # --no-paypal is the only opt-out and is propagated to the child process explicitly.
     env["COMMERCE_PUBLIC_API_URL"] = f"http://localhost:{port}"
+    if no_paypal:
+        env["COMMERCE_PAYPAL_DISABLED"] = "1"
+        env["PAYPAL_CLIENT_ID"] = ""
+        env["PAYPAL_CLIENT_SECRET"] = ""
+    else:
+        env.pop("COMMERCE_PAYPAL_DISABLED", None)
     if federated:
         env["COMMERCE_DEMO_AUTH"] = "sdk"
     module = f"{vertical}.api.main:app"
@@ -191,7 +251,16 @@ def start_api(vertical: str, port: int, federated: bool) -> subprocess.Popen:
 
 
 def start_web(app_dir: Path, port: int, api_port: int, prod: bool) -> subprocess.Popen:
+    from dotenv import dotenv_values
+
     env = {**os.environ, "NEXT_PUBLIC_API_URL": f"http://localhost:{api_port}"}
+    # Pass only a non-secret UI mode flag; API credentials never enter the web bundle.
+    settings = {
+        **dotenv_values(REPO_ROOT / ".env"),
+        **dotenv_values(app_dir.parent / ".env"),
+        **os.environ,
+    }
+    env["NEXT_PUBLIC_COMMERCE_PLATFORM"] = settings.get("COMMERCE_PLATFORM") or "demo"
     if prod:
         subprocess.run([str(NEXT), "build"], cwd=app_dir, check=True, env=env)
     return spawn([str(NEXT), "start" if prod else "dev", "--port", str(port)], app_dir, env)
@@ -241,6 +310,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--fresh-memory",
         action="store_true",
         help="delete the vertical's persisted memory files first (implies --no-reuse)",
+    )
+    parser.add_argument(
+        "--no-paypal",
+        action="store_true",
+        help=(
+            "explicit offline mode: disable PayPal checkout and the agent's PayPal tool "
+            "(PayPal is enabled by default whenever sandbox credentials are present)"
+        ),
     )
     parser.add_argument("--no-install", action="store_true", help="fail instead of installing")
     parser.add_argument("--prod", action="store_true", help="next build + start instead of dev")
@@ -309,11 +386,24 @@ def main() -> int:
                 "  cp .env.example .env   # at the repo root; fill in the key and restart"
             )
 
+    # PayPal is expected, not optional. Say so loudly when the demo cannot transact.
+    if args.no_paypal:
+        print(f"{YELLOW}--no-paypal: explicit offline mode; no PayPal calls will be made.{RESET}")
+    else:
+        available, detail = paypal_credentials(args.vertical)
+        if available:
+            print(
+                f"{GREEN}PayPal sandbox checkout enabled ({detail}): the agent's "
+                f"create_paypal_order tool is live behind the provenance gate.{RESET}"
+            )
+        else:
+            warn_missing_paypal(args.vertical, detail)
+
     processes: list[tuple[str, subprocess.Popen]] = []
     try:
         if run_api and not reuse_api:
             ensure_python_deps(install=not args.no_install)
-            api = start_api(args.vertical, api_port, args.federated)
+            api = start_api(args.vertical, api_port, args.federated, args.no_paypal)
             processes.append(("api", api))
             pipe_output(api, f"{args.vertical}-api")
             if not wait_for(f"http://localhost:{api_port}/api/health", 90, api):

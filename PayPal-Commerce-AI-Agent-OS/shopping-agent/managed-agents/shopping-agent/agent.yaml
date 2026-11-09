@@ -86,6 +86,11 @@ tools:
       - name: remove_from_cart
         enabled: true
         permission_policy: { type: always_ask }
+      # Prepares a real, cap-bounded PayPal order. It never captures money; the host
+      # enforces provenance, the shopper's cap and its own ceiling before the API call.
+      - name: create_paypal_order
+        enabled: true
+        permission_policy: { type: always_ask }
       - name: save_memory
         enabled: true
         permission_policy: { type: always_ask }

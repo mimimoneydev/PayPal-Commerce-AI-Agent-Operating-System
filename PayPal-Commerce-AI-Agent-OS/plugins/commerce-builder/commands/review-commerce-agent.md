@@ -1,9 +1,9 @@
 ---
-description: Map a shopping or merchant agent the user already runs or is building, compare it with the reference row by row, and convert the rows the user picks. Use when an existing commerce agent, assistant, or chatbot is to be reviewed, or its latency, cost, UI, or safety brought in line, rather than a new one started.
+description: Map a shopping or merchant agent the user already runs or is building, compare it with the patterns in this repository row by row, and convert the rows the user picks. Use when an existing commerce agent, assistant, or chatbot is to be reviewed, or its latency, cost, UI, or safety brought in line, rather than a new one started.
 argument-hint: "[where the agent's code is, and what prompted the review, if known]"
 ---
 
-Review the user's commerce agent against the `anthropics/commerce-agents` reference. The user said:
+Review the user's commerce agent against the patterns in this repository. The user said:
 
 $ARGUMENTS
 
@@ -13,7 +13,7 @@ suggest `/scaffold-commerce-agent`.
 
 ## Step 1: Map the agent
 
-The reference is the current repo when `shopping-agent/core/shopping_agent/backend.py` exists,
+The package source is the current repo when `shopping-agent/core/shopping_agent/backend.py` exists,
 else a clone; the agent is the path in $ARGUMENTS, else the code that builds the model request.
 Fill in one line per row below with the file and line that shows it; comparing is Step 3.
 
@@ -69,7 +69,7 @@ loop row is the largest and comes last. Present the table and stop; ask which ro
 
 Before the first code row, the agent's existing service calls become a `StorefrontBackend` or
 `MerchantBackend` subclass; that lets the rows land one at a time. On Python a row's module is imported from the
-reference package and the agent's own retired; in another language it is ported under the same
+package in this repository and the agent's own retired; in another language it is ported under the same
 name, as `/scaffold-commerce-agent` lays out. Skills are copied unchanged. After each row the eval
 suite runs, turn two shows cache reads (commerce-prompt-caching says where), and the record is
 updated. A flow the agent lacks is `/add-commerce-flow`.

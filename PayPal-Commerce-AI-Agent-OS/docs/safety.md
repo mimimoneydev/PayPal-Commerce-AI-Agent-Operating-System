@@ -1,6 +1,6 @@
 # Safety
 
-This page lists what the reference code enforces, what it still asks the model to do, and
+This page lists what this codebase enforces, what it still asks the model to do, and
 what a deployment adds.
 
 Paths are package-relative: `commerce_common/` is `commerce-common/commerce_common/`,
@@ -71,8 +71,9 @@ The reference stops at the boundary of your systems. Before either agent is expo
 - **Business rules.** Fraud, eligibility, pricing, and inventory rules, inside your `StorefrontBackend` or
   `MerchantBackend`. The gates check provenance and caps; the backend decides whether a
   write is allowed at all.
-- **Payments and fulfillment.** The optional PayPal host handles approval and capture without
-  exposing credentials to the model. A deployment still owns final pricing (shipping, tax,
+- **Payments and fulfillment.** The default-on PayPal host prepares cap-bounded Orders v2
+  orders and handles approval and capture without exposing credentials to the model; the agent
+  itself can never capture money. A deployment still owns final pricing (shipping, tax,
   discounts), inventory reservation, fraud controls, order creation, fulfillment, refunds,
   disputes, reconciliation, and its financial ledger; see `docs/payments.md`.
 - **Memory as personal data.** The fact categories your write filter refuses, the retention

@@ -1,0 +1,13 @@
+PayPal Commerce AI Agent OS
+Copyright 2026 PayPal Commerce AI Agent OS contributors
+
+This product contains software derived from a third-party Apache-2.0-licensed
+commerce agent reference blueprint (Copyright 2026 Anthropic PBC). All original
+copyright, patent, trademark and attribution notices in the source files are
+retained unchanged, as required by section 4(c) of the Apache License 2.0.
+The full license text is in LICENSE.
+
+Additions and modifications made for this project are listed in CHANGES.md;
+full attribution is in CREDITS.md.
+
+This is an unofficial hackathon project, not affiliated with PayPal, Inc.

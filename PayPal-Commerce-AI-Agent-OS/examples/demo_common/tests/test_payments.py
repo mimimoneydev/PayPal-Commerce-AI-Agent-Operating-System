@@ -68,3 +68,44 @@ async def test_hosted_checkout_hides_identity_and_completes_server_capture(tmp_p
         )
         assert captured.status_code == 200
         assert captured.json()["status"] == "completed"
+
+
+async def test_paid_receipt_reaches_order_reads_and_next_conversation(tmp_path, backend):
+    from commerce_common.payments import drain_finalizations
+    from demo_common.payments import PaymentRuntime
+    from demo_common.sessions import SessionStore
+    from shopping_agent import ShoppingSessionContext, ShoppingSessionState
+
+    runtime = PaymentRuntime(
+        config=FakeProvider.config,
+        database=tmp_path / "receipts.db",
+        public_api_url="https://checkout.test",
+    )
+    runtime.service.provider = FakeProvider()
+    sessions = SessionStore(ShoppingSessionState)
+    record = sessions.start("buyer")
+    session = ShoppingSessionContext(session_id=record.session_id, user_id="buyer")
+    _, token = await runtime.service.create_checkout(
+        session_id=record.session_id,
+        user_id="buyer",
+        currency="USD",
+        items=[PaymentItem(product_id="sku", name="Camp light", unit_amount="19.50", quantity=1)],
+    )
+    await runtime.service.create_order(token)
+    await runtime.service.capture(token, "ORDER-1")
+    await runtime.sync_events(record)
+    assert "Do not ask the customer to pay again" in record.pending_app_events[-1]
+    assert await drain_finalizations(runtime.service, runtime.finalizer) == 1
+    runtime.install_order_reads(backend)
+    orders = await backend.get_orders(session)
+    receipt = next(o for o in orders if o.order_id.startswith("ORDER-co_"))
+    assert receipt.total == 19.5
+    await runtime.sync_events(record)
+    sessions.save(record)
+    restored = sessions.require(record.session_id)
+    await runtime.sync_events(restored)
+    assert len(restored.pending_app_events) == 2
+    assert receipt.order_id in restored.pending_app_events[-1]
+    outsider = ShoppingSessionContext(session_id="other", user_id="another-buyer")
+    assert await backend.get_order(outsider, receipt.order_id) is None
+    await runtime.close()

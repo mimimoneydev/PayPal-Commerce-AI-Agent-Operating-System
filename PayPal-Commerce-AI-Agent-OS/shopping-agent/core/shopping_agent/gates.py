@@ -13,7 +13,9 @@ from __future__ import annotations
 import asyncio
 import weakref
 from collections.abc import Sequence
+from decimal import Decimal, InvalidOperation
 
+from commerce_common.payments import PaymentError, money
 from commerce_common.streaming import AgentEvent, ToolOutcome
 
 from .backend import StorefrontBackend
@@ -24,6 +26,11 @@ from .types import Cart, Order, Product, ShoppingSessionContext, ShoppingSession
 
 PROVENANCE_GATE = "provenance"
 OPTIONS_GATE = "options"
+
+# A model-supplied cap is never trusted as an unbounded authorization. It is clamped to
+# this value and then to the host's COMMERCE_MAX_ORDER_AMOUNT ceiling inside the service.
+MAX_AGENT_ORDER_CAP = Decimal("10000.00")
+MAX_AGENT_ORDER_IDS = 20
 
 
 def provenance_error(product_id: str) -> str:
@@ -181,3 +188,75 @@ async def _check_provenance_or_cart(
     if any(item.product_id == product_id for item in current.items):
         return None
     return ToolOutcome.held(PROVENANCE_GATE, provenance_error(product_id))
+
+
+async def gated_create_paypal_order(
+    *,
+    backend: StorefrontBackend,
+    config: ShoppingAgentConfig,
+    session: ShoppingSessionContext,
+    state: ShoppingSessionState,
+    product_ids: Sequence[str],
+    max_amount: object,
+) -> ToolOutcome:
+    """The PayPal-native tool's whole authority, behind the catalog provenance gate.
+
+    The agent may name ids and a cap, and nothing else. Every id must have been returned
+    by a catalog or order tool this session; prices, quantities, currency, the immutable
+    cart snapshot, and the PayPal order itself are all produced by the host. A cap that
+    is not a finite positive amount, or a total above the effective cap, ends the call
+    before any payment row exists. The returned URLs go to the customer's card, never
+    into the model's result text.
+    """
+    requested = list(dict.fromkeys(str(pid) for pid in product_ids))[:MAX_AGENT_ORDER_IDS]
+    if not requested:
+        return ToolOutcome.error(
+            "Name at least one product_id from this session's catalog results to buy."
+        )
+    for product_id in requested:
+        if held := check_provenance(state, product_id):
+            return held
+    try:
+        cap = Decimal(str(max_amount))
+    except (InvalidOperation, ValueError, TypeError):
+        cap = Decimal("0")
+    if not cap.is_finite() or cap <= 0:
+        return ToolOutcome.error(
+            "The spend cap must be a positive amount the shopper authorized. "
+            "Ask the customer for their limit before creating an order."
+        )
+    cap = min(money(cap), MAX_AGENT_ORDER_CAP)
+    try:
+        receipt = await backend.create_paypal_order(session, product_ids=requested, max_amount=cap)
+    except PaymentError as error:
+        # PaymentError messages are deliberately credential-free and payer-free.
+        return ToolOutcome.error(str(error))
+    if receipt is None:
+        return ToolOutcome.error(
+            "PayPal checkout is not configured for this store. The cart is unchanged; "
+            "say payment is unavailable here rather than offering a link."
+        )
+
+    cart = await backend.get_cart(session)
+    card = {
+        "cart": cart_payload(cart),
+        "handoffs": [{"url": receipt.checkout_url, "label": "Approve this PayPal order"}],
+        "note": (
+            f"PayPal order {receipt.paypal_order_id} was prepared within the "
+            f"{receipt.spend_cap:.2f} {receipt.currency} cap. Nothing is charged until "
+            "the customer approves it."
+        ),
+        "receipt": {**receipt.model_view(), "approval_url": receipt.approval_url},
+    }
+    model_view = {
+        **receipt.model_view(),
+        "note": (
+            "The order is created but not captured or charged. The customer approves it "
+            "on the PayPal page shown in the checkout card; the host captures afterward. "
+            "Do not claim the purchase is complete."
+        ),
+    }
+    return ToolOutcome(
+        STOREFRONT_FENCE.fence_payload(model_view, config.max_fenced_chars),
+        [AgentEvent.ui("checkout", card)],
+    )

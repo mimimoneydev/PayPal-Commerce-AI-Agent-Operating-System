@@ -4,7 +4,7 @@ The retail example runs both agents over one catalog with the built-in component
 the storefront searches, compares, plans, fills the cart, stages checkout, and keeps
 memory across restarts; the portal shows the morning digest, stages restocks, listing
 fixes, and promotions, and applies them from the preview card. It is also the backend the
-SDK consoles and the reference MCP servers load by default.
+SDK consoles and the example MCP servers load by default.
 
 ## Run
 

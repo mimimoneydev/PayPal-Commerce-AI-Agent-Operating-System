@@ -53,8 +53,13 @@ export default function StorefrontPage() {
   const { data: orders, failed: ordersFailed } = useResource(session.sessionId ? () => api.fetchOrders() : null, [session.sessionId, chat.completed]);
 
   useEffect(() => {
-    if (session.sessionId) void api.fetchCart<CartPayload>().then((next) => next && setCart(next));
-  }, [session.sessionId]);
+    const refresh = () => {
+      if (session.sessionId) void api.fetchCart<CartPayload>().then((next) => next && handleCartUpdate(next));
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [session.sessionId, handleCartUpdate]);
 
   const late = orders?.filter((order) => order.status === "delayed").length ?? 0;
   const views: StoreView<View>[] = [

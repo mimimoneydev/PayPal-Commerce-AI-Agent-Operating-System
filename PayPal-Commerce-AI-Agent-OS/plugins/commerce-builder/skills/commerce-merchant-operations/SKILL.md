@@ -1,11 +1,11 @@
 ---
 name: commerce-merchant-operations
-description: The reference merchant agent, covering its flows, staged changes and host approval, metrics grounding, the analysis delegate, store memory, components, and marketplace rules. Load when building or reviewing an agent for the operators of a store, property, subscriber base, or venue.
+description: The merchant agent in this repository, covering its flows, staged changes and host approval, metrics grounding, the analysis delegate, store memory, components, and marketplace rules. Load when building or reviewing an agent for the operators of a store, property, subscriber base, or venue.
 ---
 
 # Merchant agent
 
-Paths are in the reference repo: `merchant_agent/` is `merchant-agent/core/merchant_agent/`, `merchant_agent_runtime/`
+Paths are in this repository: `merchant_agent/` is `merchant-agent/core/merchant_agent/`, `merchant_agent_runtime/`
 is `merchant-agent/runtime-messages-api/merchant_agent_runtime/`, `merchant_agent_sdk/` is
 `merchant-agent/runtime-agent-sdk/merchant_agent_sdk/`, `commerce_common/` is `commerce-common/commerce_common/`.
 

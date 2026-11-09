@@ -15,7 +15,7 @@ your app  ──user.message──►  hosted agent (agent.yaml: model, system.m
 
 | Path | Contents |
 |---|---|
-| `shopping-agent/agent.yaml` | The manifest: 5 skills, 13 storefront tools, 7 presentation tools |
+| `shopping-agent/agent.yaml` | The manifest: 5 skills, 14 storefront tools, 7 presentation tools |
 | `shopping-agent/system.md` | The system prompt, derived from `shopping_agent.prompt.build_static_system`; its header lists what differs |
 | [`storefront-mcp-server/`](storefront-mcp-server/) | The reference MCP server over a `StorefrontBackend`; the part you replace |
 | `../../scripts/deploy_managed_agent.sh` | Resolves the manifest (`commerce_common.manifest`) and posts it; dry run by default |
@@ -54,7 +54,7 @@ Then post `user.message` events to the session and read its event stream.
 - `agent.message`: assistant text; render it as chat.
 - `agent.custom_tool_use`: a presentation tool call. Validate the payload against
   `shopping_agent/tools/presentation.py`, fill in titles, prices, and order data by id from
-  your own systems (`shopping_agent/enrichment.py` is the reference join), render it, and
+  your own systems (`shopping_agent/enrichment.py` is the example join), render it, and
   reply with a `user.custom_tool_result`. Every call, `present_suggestions` included, needs
   a reply or the session waits; here the model writes a closing line after the chips'
   result.
@@ -70,7 +70,7 @@ The MCP toolset is deny-by-default: a tool the server adds is unusable until it 
 in the manifest. Reads run without confirmation; writes pause the session (`always_ask`),
 and the server enforces provenance and caps whichever policy the manifest sets.
 
-- **Storefront tools** (from the `storefront` MCP server): `search_products`, `get_product_details`, `get_cart`, `add_to_cart`, `update_cart_item`, `remove_from_cart`, `get_preferences`, `save_memory`, `recall_memories`, `get_orders`, `get_order_status`, `search_policies`, `get_fulfillment_options`.
+- **Storefront tools** (from the `storefront` MCP server): `search_products`, `get_product_details`, `get_cart`, `add_to_cart`, `update_cart_item`, `remove_from_cart`, `get_preferences`, `save_memory`, `recall_memories`, `get_orders`, `get_order_status`, `search_policies`, `get_fulfillment_options`, `create_paypal_order`.
 - **Presentation tools** (custom tools your app executes): `present_products`, `present_comparison`, `present_plan`, `present_guide`, `present_order_status`, `checkout`, `present_suggestions`.
 
 Of the built-in agent tools only `read` is enabled; the platform loads skill bodies with it.

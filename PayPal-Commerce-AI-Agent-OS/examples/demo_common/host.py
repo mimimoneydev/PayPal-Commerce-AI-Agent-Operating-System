@@ -205,6 +205,12 @@ def stream_turn(
         try:
             sessions.save(record)
         except SessionConflictError:
+            if not getattr(sessions, "allow_turn_overwrite", True):
+                logger.warning(
+                    "session %s: concurrent durable write preserved; reload session",
+                    session_tag(record.session_id),
+                )
+                return
             # A button's request wrote the session while the turn streamed. The turn is the
             # larger write, so it goes in over that version; the note the button queued is lost.
             record.version = (sessions.read_state(record.session_id) or (0, {}))[0]

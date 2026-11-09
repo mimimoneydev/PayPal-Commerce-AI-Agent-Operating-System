@@ -1,11 +1,11 @@
 ---
 name: commerce-architecture
-description: How the reference commerce agents of either role are structured, covering the loop, where each rule lives, skills, the backend interface, delegates, and model fields. Load when designing or reviewing the structure of a shopping or merchant agent.
+description: How the commerce agents of either role are structured in this repository, covering the loop, where each rule lives, skills, the backend interface, delegates, and model fields. Load when designing or reviewing the structure of a shopping or merchant agent.
 ---
 
 # Commerce agent architecture
 
-Paths are in the reference repo: `commerce_common/` is `commerce-common/commerce_common/`, `shopping_agent/` is
+Paths are in this repository: `commerce_common/` is `commerce-common/commerce_common/`, `shopping_agent/` is
 `shopping-agent/core/shopping_agent/`, `merchant_agent/` is `merchant-agent/core/merchant_agent/`, and the runtimes are
 `shopping-agent/runtime-messages-api/shopping_agent_runtime/` and `merchant-agent/runtime-messages-api/merchant_agent_runtime/`.
 

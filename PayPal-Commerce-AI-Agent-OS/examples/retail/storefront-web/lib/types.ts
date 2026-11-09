@@ -131,10 +131,26 @@ export interface CheckoutHandoff {
   seller?: string;
 }
 
+/** A host-created, cap-bounded PayPal order. Created, not captured: no money moves
+ *  until the buyer approves on PayPal's page. Money fields are decimal strings. */
+export interface PaymentReceipt {
+  checkout_id: string;
+  paypal_order_id: string;
+  status: string;
+  currency: string;
+  amount: string;
+  spend_cap: string;
+  cart_hash: string;
+  items: { product_id: string; name: string; unit_amount: string; quantity: number }[];
+  approval_url?: string | null;
+}
+
 export interface CheckoutPayload {
   /** Where payment happens when it is not a route in this app; filled by the backend. */
   handoffs?: CheckoutHandoff[];
   note?: string;
   fulfillment_method?: "delivery" | "pickup" | "shipping";
   cart: CartPayload;
+  /** Present when create_paypal_order prepared a bounded order for this cart. */
+  receipt?: PaymentReceipt;
 }

@@ -1,5 +1,5 @@
 ---
-description: Add one shopping or merchant flow to an existing commerce agent, copying its skill from the reference, wiring the tools it calls, and authoring its first eval cases. Use when an agent on the reference packages is to take on another of the flows: search, planning, purchase research, memory across sessions, or order care for shoppers; performance, listings, inventory, pricing, or campaigns for merchants.
+description: Add one shopping or merchant flow to an existing commerce agent, copying its skill from this repository, wiring the tools it calls, and authoring its first eval cases. Use when an agent on the packages in this repository is to take on another of the flows: search, planning, purchase research, memory across sessions, or order care for shoppers; performance, listings, inventory, pricing, or campaigns for merchants.
 argument-hint: "<flow-name> (shopping or merchant; the body lists them)"
 ---
 
@@ -16,7 +16,7 @@ named under each table below and pinning their behaviors in Step 4.
 
 ## Step 1: Locate things
 
-1. The reference (`anthropics/commerce-agents`): the current repo, a local clone, or a fresh clone.
+1. The package source (this repository): the current checkout, or a local clone of it.
 2. The user's agent: its skills directory, backend, and config; a project from
    `/scaffold-commerce-agent` has all three. Without an agent, stop and suggest that command.
 3. The `## Commerce agent decision record` section of the project's `CLAUDE.md`. It gives the
@@ -29,9 +29,9 @@ named under each table below and pinning their behaviors in Step 4.
 ## Step 2: Copy the skill
 
 Copy the `shopping-agent/skills/<flow>/` or `merchant-agent/skills/<flow>/` directory from the
-reference into the project's skills directory unchanged (the loader reads `skills/<flow>/SKILL.md`). A scaffolded project parks its unindexed
+this repository into the project's skills directory unchanged (the loader reads `skills/<flow>/SKILL.md`). A scaffolded project parks its unindexed
 flows under `skills/_staged/<flow>/`, which the loader does not read: move that directory up one
-level; a copy already in either place is compared with the reference instead. Indexing the flow
+level; a copy already in either place is compared with the copy in this repository instead. Indexing the flow
 changes the static prompt; the commerce-prompt-caching skill says what that costs and when to do it.
 
 ## Step 3: Wire the tools

@@ -7,7 +7,7 @@
 
 import CartPanel from "@/components/CartPanel";
 import GenerativeBlock from "@/components/generative";
-import { SHOWCASE, SHOWCASE_CART } from "@/lib/showcase-fixtures";
+import { SHOWCASE, SHOWCASE_CART, SHOWCASE_RECEIPT } from "@/lib/showcase-fixtures";
 
 const SECTIONS = Object.keys(SHOWCASE) as (keyof typeof SHOWCASE)[];
 
@@ -31,6 +31,17 @@ export default function ShowcasePage() {
           <GenerativeBlock block={{ component: name, payload: SHOWCASE[name] }} status="final" onAdd={() => true} />
         </Section>
       ))}
+      <Section name="checkout-receipt">
+        <p className="mb-2 text-[11px] text-(--ink-soft)">
+          Component fixture — placeholder identifiers, no PayPal order was created. Real ids are
+          recorded in SANDBOX-PROOF.md after a sandbox run.
+        </p>
+        <GenerativeBlock
+          block={{ component: "checkout", payload: SHOWCASE_RECEIPT }}
+          status="final"
+          onAdd={() => true}
+        />
+      </Section>
       <Section name="cart">
         <div className="flex h-[440px] flex-col overflow-hidden rounded-xl border border-(--line) bg-(--card)">
           <CartPanel cart={SHOWCASE_CART} />

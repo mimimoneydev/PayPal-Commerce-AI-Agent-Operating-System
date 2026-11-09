@@ -1,11 +1,11 @@
 ---
 name: commerce-ui-tools
-description: The reference presentation-tool contract, covering server-side enrichment, suggestion chips, the event stream, progressive rendering, both roles' built-in components, and adding a vertical component. Load when building or reviewing how a commerce agent's output reaches a frontend.
+description: The presentation-tool contract in this repository, covering server-side enrichment, suggestion chips, the event stream, progressive rendering, both roles' built-in components, and adding a vertical component. Load when building or reviewing how a commerce agent's output reaches a frontend.
 ---
 
 # Presentation tools
 
-Paths are in the reference repo: `commerce_common/` is `commerce-common/commerce_common/`, `shopping_agent/` is
+Paths are in this repository: `commerce_common/` is `commerce-common/commerce_common/`, `shopping_agent/` is
 `shopping-agent/core/shopping_agent/`, `merchant_agent/` is `merchant-agent/core/merchant_agent/`.
 
 ## The contract

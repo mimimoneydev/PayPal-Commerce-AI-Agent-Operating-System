@@ -1,6 +1,6 @@
 ---
 name: commerce-prompt-caching
-description: The reference agents' cache-stable request assembly, covering the static system and per-request context split, the fixed tool list, the rolling conversation breakpoint, which config fields are prompt bytes, and verification. Load when writing or reviewing a commerce agent's prompt assembly, when cache reads are zero, or when a turn's latency or cost is the question.
+description: The cache-stable request assembly used in this repository, covering the static system and per-request context split, the fixed tool list, the rolling conversation breakpoint, which config fields are prompt bytes, and verification. Load when writing or reviewing a commerce agent's prompt assembly, when cache reads are zero, or when a turn's latency or cost is the question.
 ---
 
 # Cache-stable request assembly
@@ -11,7 +11,7 @@ description: The reference agents' cache-stable request assembly, covering the s
 ## The three breakpoints
 
 A request's cacheable prefix runs `tools`, then `system`, then the messages; a breakpoint ends a span the next call reads
-back. The reference agents place three, all from `commerce_common/prompt_assembly.py`:
+back. The agents in this repository place three, all from `commerce_common/prompt_assembly.py`:
 
 1. **The last tool**: `with_tool_cache_control(tools)`.
 2. **The static system text**: `build_system_blocks(static, context)` marks it and appends the context block unmarked.

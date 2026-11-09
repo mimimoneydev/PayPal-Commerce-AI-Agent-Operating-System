@@ -5,7 +5,7 @@
 
 import { AskLink, BagPanel, CheckoutButton, formatMoney, optionValuesLabel, plural, RemoveLink, Stepper, TotalRow, useCatalogIndex, useStoreFrame } from "web-shared";
 import { fetchProducts } from "@/lib/api";
-import { STORE_POLICY } from "@/lib/storePolicy";
+import { CONNECTED_STORE, STORE_POLICY } from "@/lib/storePolicy";
 import type { CartItem, CartPayload, Product } from "@/lib/types";
 import { DeliveryPromise, ProductImage, ProductTitle } from "./ProductTile";
 
@@ -79,7 +79,7 @@ export default function CartPanel({ cart, checkoutStaged = false }: { cart: Cart
       }
       footer={
         <>
-          {items.length ? <FreeShippingMeter subtotal={cart?.subtotal ?? 0} /> : null}
+          {items.length && !CONNECTED_STORE ? <FreeShippingMeter subtotal={cart?.subtotal ?? 0} /> : null}
           <TotalRow label={count ? `Subtotal · ${plural(count, "item")}` : "Subtotal"} value={formatMoney(cart?.subtotal ?? 0, cart?.currency)} />
           <CheckoutButton staged={checkoutStaged} disabled={items.length === 0} prompt="Check out my cart." />
           {items.length ? (

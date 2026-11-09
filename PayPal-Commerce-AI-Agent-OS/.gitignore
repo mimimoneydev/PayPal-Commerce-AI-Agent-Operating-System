@@ -31,10 +31,17 @@ npm-debug.log*
 integrations/apimatic/*/src/spec/openapi.json
 
 
+# PayPal sandbox proof. SANDBOX-PROOF.md, proof/sandbox-transaction.json and
+# proof/screenshots/ are the deliverables and MUST be committed. The local
+# payment DB and raw webhook deliveries (signed headers) are not.
+proof/payments.sqlite3*
+proof/webhook-events.jsonl
+
 # Example runtime state. The memory files hold whatever a local demo
 # remembered — personal data in a real deployment — and are never committed.
 examples/*/data/.memory-*.json
 examples/*/data/.payments.sqlite3*
+commerce-control.db*
 shopping-agent/managed-agents/storefront-mcp-server/.storefront_memory.json
 merchant-agent/managed-agents/merchant-mcp-server/.merchant_memory.json
 
@@ -43,4 +50,14 @@ merchant-agent/managed-agents/merchant-mcp-server/.merchant_memory.json
 .idea/
 .vscode/
 .claude/
+.workbuddy-ai/
 pyrightconfig.json
+
+# VPS deployment bundle. This is a GENERATED snapshot of the whole source
+# tree plus deploy/ tooling, produced for uploading to a server. It is not
+# project source and must never be committed: it would duplicate every file
+# (including all Apache-2.0 notices) and double the repository size.
+/deployment/
+
+# Local pytest temp root (used when the system temp dir is restricted).
+/.pytest-tmp/

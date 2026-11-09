@@ -25,6 +25,7 @@ hosted agent  ──MCP (streamable HTTP)──►  storefront_mcp_server.py  �
 | `get_order_status` | read |
 | `search_policies` | read |
 | `get_fulfillment_options` | read |
+| `create_paypal_order` | write; provenance-gated, cap-bounded, host-priced; prepares a PayPal order without capturing |
 
 Presentation tools are custom tools in the manifest, executed by the host application, so
 none are served here; there is no `load_skill`, because the platform loads skills itself.

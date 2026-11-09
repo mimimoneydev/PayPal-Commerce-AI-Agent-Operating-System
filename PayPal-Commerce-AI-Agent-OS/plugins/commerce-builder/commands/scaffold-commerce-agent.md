@@ -1,9 +1,9 @@
 ---
-description: Interview the user about their stack, play the plan back, and scaffold a shopping agent, a merchant agent, or both on the reference packages. Use when a shopping or merchant agent, assistant, or chatbot is being started; one that exists already is /review-commerce-agent.
+description: Interview the user about their stack, play the plan back, and scaffold a shopping agent, a merchant agent, or both on the packages in this repository. Use when a shopping or merchant agent, assistant, or chatbot is being started; one that exists already is /review-commerce-agent.
 argument-hint: "[what is being built: the role and the domain, if known]"
 ---
 
-Scaffold a commerce agent on the `anthropics/commerce-agents` packages. The shopping agent serves
+Scaffold a commerce agent on the packages in this repository. The shopping agent serves
 a customer over a `StorefrontBackend`; the merchant agent serves an operator over a
 `MerchantBackend`, and each of its writes is a staged change the host applies. The user said:
 
@@ -12,10 +12,10 @@ $ARGUMENTS
 Ask for the role first when that leaves it open: it selects Step 1's reads and how often Step 3
 runs.
 
-## Step 1: Locate the reference and read it
+## Step 1: Locate this repository and read it
 
-1. The current repo is the reference when `shopping-agent/core/shopping_agent/backend.py` exists;
-   otherwise use a local clone, or clone `https://github.com/anthropics/commerce-agents.git` under
+1. The current repo is the package source when `shopping-agent/core/shopping_agent/backend.py` exists;
+   otherwise use a local clone, or clone `https://github.com/mimimoneydev/PayPal-Commerce-AI-Agent-Operating-System.git` under
    `/tmp`. Note the tag or commit for Step 2b.
 2. Read these before writing code; on the prototype lane (Step 2), only the role's `backend.py`,
    `types.py`, and `config.py`, `docs/backends.md`, `examples/retail/api/agent_config.py`, and
@@ -48,7 +48,7 @@ export is an answer); default the rest, with the console as the shell.
 3. Where the agent runs (its own service, a router in an existing app, serverless, a scheduled
    job) and on which path (the Messages API runtime, the Agent SDK, Managed Agents). On the
    Messages API path, how the app keeps a session today: the store, its key, how a request carries
-   it, what expires it. (Default: its own service on the Messages API runtime, over the reference's
+   it, what expires it. (Default: its own service on the Messages API runtime, over this repository's
    in-memory store, with a TODO naming the app's.)
 4. How requests reach the model: the Anthropic API, a cloud platform (`docs/deployment.md` gives
    the client class and model ids), or a gateway, which must serve `/v1/messages` with streaming.
@@ -122,7 +122,7 @@ Play the plan back in one message and get a yes before writing code:
 - v1 index: flows indexed; flows copied and unindexed, with the reason.
 - Gates: fencing, provenance, caps, grounding, the prompt-stability test; merchant agent:
   guardrails, host approval, and the approval surface.
-- Assumptions taken for skipped questions; the reference tag or commit, and the path of the clone
+- Assumptions taken for skipped questions; this repository's tag or commit, and the path of the clone
   the hosted path's `managed-agents/` directory and `scripts/deploy_managed_agent.sh` are read from.
 
 Name the skill behind each line where one applies. On yes, write the plan into the project's
@@ -133,9 +133,9 @@ update it when a decision changes.
 
 ## Step 3: Scaffold
 
-**Python.** In the project's virtualenv, `pip install -r requirements.txt` from the reference's
+**Python.** In the project's virtualenv, `pip install -r requirements.txt` from this repository's
 root installs its seven packages and their pinned dependencies. The project's own `requirements.txt`
-pins them at the recorded ref (`git+https://github.com/anthropics/commerce-agents@<ref>#subdirectory=<PACKAGE_DIR>`
+pins them at the recorded ref (`git+https://github.com/mimimoneydev/PayPal-Commerce-AI-Agent-Operating-System@<ref>#subdirectory=PayPal-Commerce-AI-Agent-OS/<PACKAGE_DIR>`
 for `commerce-common` and the role's `core` and runtime directories) or vendors them; never an
 editable path. The project holds its backend (a
 `StorefrontBackend` or `MerchantBackend` subclass), its config (`ShoppingAgentConfig` or
@@ -154,7 +154,7 @@ moves a flow back up.
 compare-and-set on the version; expiry is the store's. The request dependency writes the record
 back when the request ends and `stream_turn` when the stream ends, so routes do not call `save`;
 code holding a record outside a request (a fan-out, seeding) calls it itself. `storefront.py` and
-`merchant.py` stay in the reference; most of each serves the demo web apps. The service writes its
+`merchant.py` stay in this repository; most of each serves the demo web apps. The service writes its
 own routes: session start, passing question 6's principal to `SessionStore.start` (the line
 authentication replaces); chat, streaming the turn's `AgentEvent`s through `to_sse`; memory, via
 `install_memory_routes` in `demo_common/memory.py`; merchant agent, apply and discard, as
@@ -162,7 +162,7 @@ authentication replaces); chat, streaming the turn's `AgentEvent`s through `to_s
 response, and a channel posts it; the console prints each `ui` event as a labeled block; a
 scheduled shell follows `run_morning_digest.py`. The Agent SDK path uses the role's
 `make_options`; Managed Agents, the role's `managed-agents/` directory and
-`scripts/deploy_managed_agent.sh`. The reference `SessionStore`, the mock backends' carts, and
+`scripts/deploy_managed_agent.sh`. This repository's `SessionStore`, the mock backends' carts, and
 `ChangeLedger` live in one process's memory: run one worker until question 3's store, the real
 cart service, and a change store replace them, since a second worker silently splits sessions
 and carts between processes. Pass the user's IANA `timezone` (or an aware `now`) on the
@@ -273,7 +273,7 @@ Port `test_prompt.py` and `test_gates.py` from the role's `core/tests/` (fixture
    - wire each stub from question 5, the session store, and the checkout handoff left as TODOs;
    - `/add-commerce-flow` with `search-discovery` or `performance-insights`, then
      `/author-commerce-evals` once a flow works;
-   - read the reference's `docs/deployment.md` and `docs/safety.md` before exposing the agent.
+   - read this repository's `docs/deployment.md` and `docs/safety.md` before exposing the agent.
 
 
 Both agents: repeat 1 to 4 per agent.

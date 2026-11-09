@@ -33,6 +33,10 @@ class ShoppingAgentConfig(BaseAgentConfig):
     enable_orders: bool = True
     enable_policies: bool = True
     enable_fulfillment: bool = True
+    # The PayPal-native tool in the agent loop. On by default: with sandbox credentials
+    # present the model can create a cap-bounded PayPal order behind the provenance gate.
+    # An operator can switch it off without touching the host's ordinary checkout link.
+    enable_agentic_payments: bool = True
 
     # -- Cart caps, enforced by the gates on every path.
     max_quantity_per_item: int = Field(default=24, ge=1)
@@ -124,6 +128,8 @@ class ShoppingAgentConfig(BaseAgentConfig):
     def absent_tools(self) -> frozenset[str]:
         """Names `build_tools` leaves out for the systems switched off above."""
         names: set[str] = set()
+        if not self.enable_cart or not self.enable_agentic_payments:
+            names.add("create_paypal_order")
         if not self.enable_cart:
             names |= {"get_cart", "add_to_cart", "update_cart_item", "remove_from_cart", "checkout"}
         if not self.enable_orders:

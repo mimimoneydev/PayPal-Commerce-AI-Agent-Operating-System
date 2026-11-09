@@ -50,9 +50,12 @@ this way, and its executor subclass relays the engine's messages to the model.
 
 ## Step 3: Decide how checkout completes
 
-The `checkout` tool ends the agent's part: it renders the cart. The agent never places an
-order or takes payment. The host may enable the optional PayPal integration described in
-`docs/payments.md`, or use one of these handoffs for the checkout card:
+The `checkout` tool stages a cart summary; it never takes payment. The `create_paypal_order`
+tool can prepare a real, cap-bounded PayPal Orders v2 order inside the agent loop, but never
+captures money: the customer approves on PayPal's page and the host captures it. PayPal
+checkout is on by default when sandbox credentials are present; `COMMERCE_PAYPAL_DISABLED=1`
+(or `python scripts/run_demo.py retail --no-paypal`) is the explicit opt-out. See
+`docs/payments.md`. A deployment may also use one of these handoffs for the checkout card:
 
 | Your situation | What the card does | What you implement |
 |---|---|---|

@@ -23,6 +23,7 @@ from .enrichment import PRESENTATION_COMPONENTS
 from .fencing import STOREFRONT_FENCE
 from .gates import (
     gated_add_to_cart,
+    gated_create_paypal_order,
     gated_remove_from_cart,
     gated_update_cart_item,
     remember_order_items,
@@ -125,6 +126,7 @@ class ShoppingToolExecutor(BaseToolExecutor):
             "get_order_status": self._get_order_status,
             "search_policies": self._search_policies,
             "get_fulfillment_options": self._get_fulfillment_options,
+            "create_paypal_order": self._create_paypal_order,
         }
 
     # -- catalog ---------------------------------------------------------------------
@@ -221,3 +223,15 @@ class ShoppingToolExecutor(BaseToolExecutor):
         ]
         options = await self._backend.get_fulfillment_options(self._session, product_ids)
         return self._fenced(fulfillment_payload(options))
+
+    # -- PayPal-native, host-owned order creation --------------------------------------
+
+    async def _create_paypal_order(self, tool_input: dict[str, Any]) -> ToolOutcome:
+        return await gated_create_paypal_order(
+            backend=self._backend,
+            config=self._config,
+            session=self._session,
+            state=self._state,
+            product_ids=[str(pid) for pid in tool_input.get("product_ids") or []],
+            max_amount=tool_input.get("max_amount"),
+        )

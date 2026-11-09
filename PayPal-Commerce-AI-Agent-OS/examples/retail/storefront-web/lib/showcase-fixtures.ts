@@ -260,6 +260,40 @@ const checkout: CheckoutPayload = {
 
 export const SHOWCASE = { products, comparison, plan, guide, order_status, checkout };
 
+/**
+ * The bounded auto-buy receipt card, rendered as a component fixture so the UI is visible
+ * without credentials. Every identifier is deliberately a placeholder: no PayPal order was
+ * created here. Real order and capture ids come only from `scripts/demo_paypal_order.py`
+ * and are recorded in SANDBOX-PROOF.md.
+ */
+export const SHOWCASE_RECEIPT: CheckoutPayload = {
+  ...checkout,
+  note: "Cap $75.00 set by the shopper; the host priced and froze this cart.",
+  receipt: {
+    checkout_id: "fixture-checkout",
+    paypal_order_id: "FIXTURE-NOT-A-REAL-ORDER",
+    status: "CREATED",
+    currency: "USD",
+    amount: "61.00",
+    spend_cap: "75.00",
+    cart_hash: "fixture-hash-not-real",
+    items: [
+      {
+        product_id: "AR-1401",
+        name: "ACME Playroom Stacking Wooden Block Set (54 pc)",
+        unit_amount: "34.00",
+        quantity: 1,
+      },
+      {
+        product_id: "AR-2104",
+        name: "ACME Makers 300-Piece Meadow Puzzle",
+        unit_amount: "27.00",
+        quantity: 1,
+      },
+    ],
+  },
+};
+
 /** Just under the free-shipping threshold. */
 export const SHOWCASE_CART: CartPayload = {
   items: [

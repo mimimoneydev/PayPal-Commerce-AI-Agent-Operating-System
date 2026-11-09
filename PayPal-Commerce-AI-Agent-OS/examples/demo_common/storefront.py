@@ -21,6 +21,7 @@ dependency, and mounts a direct add-to-cart button through ``StorefrontHost.dire
 # Route parameters below are annotated with dependencies built at call time, so this
 # module evaluates its annotations eagerly (no ``from __future__ import annotations``).
 
+import secrets
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -87,12 +88,15 @@ class StorefrontHost:
         env_hint: str,
         cart_extras: Callable[[StorefrontRecord], dict[str, Any]] | None,
         on_startup: Sequence[Callable[[], Awaitable[None]]] = (),
+        sessions: SessionStore[ShoppingSessionState] | None = None,
     ) -> None:
         self.app = build_app(title, on_startup)
         self.backend = backend
         self.agent = agent
         self.memory_store = cast(MemoryStore, agent.memory.store)
-        self.sessions: SessionStore[ShoppingSessionState] = SessionStore(ShoppingSessionState)
+        self.sessions: SessionStore[ShoppingSessionState] = sessions or SessionStore(
+            ShoppingSessionState
+        )
         # The parameter annotation a vertical's own routes use: ``record: host.CurrentSession``.
         self.CurrentSession = session_dependency(self.sessions, "/api/session")
         self._env_hint = env_hint
@@ -111,7 +115,20 @@ class StorefrontHost:
             now=datetime.now(),
         )
 
-    def chat(self, request: ChatRequest, record: StorefrontRecord) -> StreamingResponse:
+    async def chat(self, request: ChatRequest, record: StorefrontRecord) -> StreamingResponse:
+        try:
+            if self.payment_runtime:
+                await self.payment_runtime.sync_events(record)
+            sync = getattr(self.backend, "sync_events", None)
+            if sync:
+                await sync(record, self.context(record))
+        except Exception:
+            # A provider outage must not make the chat route itself unavailable, or
+            # lead the assistant to interpret a missing receipt as a failed payment.
+            record.pending_app_events.append(
+                "Order confirmation could not be refreshed. Payment status is unknown; "
+                "do not assume failure or ask the customer to pay again."
+            )
         append_user_turn(record, request.message, "App events")
         return stream_turn(
             self.agent,
@@ -173,6 +190,7 @@ def build_storefront_host(
     product_detail: Callable[[ProductDetails], dict[str, Any]] | None = None,
     cart_extras: Callable[[StorefrontRecord], dict[str, Any]] | None = None,
     before_turn: Callable[[], None] | None = None,
+    sessions: SessionStore[ShoppingSessionState] | None = None,
 ) -> StorefrontHost:
     """Seed memory, then build the app with the shared routes. ``product_of`` and
     ``product_detail`` let a vertical stamp live state onto catalog reads or enrich the
@@ -184,22 +202,47 @@ def build_storefront_host(
         agent=agent,
         env_hint=f"examples/{example_root.name}/.env",
         cart_extras=cart_extras,
+        sessions=sessions,
         # Seed the memory fixtures when the app starts, inside its event loop.
         on_startup=[lambda: memory_seeder.seed_at_boot(cast(MemoryStore, agent.memory.store))],
     )
     app = host.app
-    host.payment_runtime = payment_runtime_from_env(
-        example_root=example_root, backend=cast(StorefrontBackend, backend)
+    host.payment_runtime = (
+        None
+        if getattr(backend, "platform_checkout", False)
+        else payment_runtime_from_env(
+            example_root=example_root, backend=cast(StorefrontBackend, backend)
+        )
     )
     if host.payment_runtime is not None:
         app.include_router(build_payment_router(host.payment_runtime))
-    read_product = product_of or backend.product
+        original_lifespan = app.router.lifespan_context
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def payment_lifespan(app):
+            async with original_lifespan(app):
+                await host.payment_runtime.start()
+                try:
+                    yield
+                finally:
+                    await host.payment_runtime.close()
+
+        app.router.lifespan_context = payment_lifespan
+    read_product = product_of or getattr(backend, "product", lambda product_id: None)
     detail_of = product_detail or (lambda product: product.model_dump())
     CurrentSession = host.CurrentSession
 
     @app.post("/api/session")
     async def start_session(request: StartSessionRequest | None = None) -> dict:
-        record = host.sessions.start((request or StartSessionRequest()).user_id)
+        # Connected guest sessions must not share the demo profile's memory or identity.
+        user_id = (
+            secrets.token_urlsafe(24)
+            if getattr(backend, "platform_checkout", False)
+            else (request or StartSessionRequest()).user_id
+        )
+        record = host.sessions.start(user_id)
         profile = await backend.get_preferences(host.context(record))
         return {
             "session_id": record.session_id,
@@ -211,10 +254,17 @@ def build_storefront_host(
     # A vertical's before_turn runs ahead of the record's load, so what it queues is in the turn.
     @app.post("/api/chat", dependencies=[Depends(before_turn)] if before_turn else [])
     async def chat(request: ChatRequest, record: CurrentSession) -> StreamingResponse:
-        return host.chat(request, record)
+        return await host.chat(request, record)
 
     @app.get("/api/products")
     async def list_products(category: str | None = None, limit: int = 24) -> dict:
+        if getattr(backend, "platform_checkout", False):
+            from shopping_agent import SearchFilters
+
+            products = await backend.search_products(
+                None, "", SearchFilters(category=category), limit
+            )
+            return {"products": [p.model_dump() for p in products]}
         products = [product for pid in backend.products if (product := read_product(pid))]
         if category:
             products = [product for product in products if product.category == category]
@@ -223,6 +273,11 @@ def build_storefront_host(
 
     @app.get("/api/products/{product_id:path}")  # an id may contain "/"
     async def get_product(product_id: str) -> dict:
+        if getattr(backend, "platform_checkout", False):
+            product = await backend.get_product_details(None, product_id)
+            if not product:
+                raise HTTPException(status_code=404, detail="Product not found")
+            return product.model_dump()
         product = read_product(product_id)
         if product is None:
             raise HTTPException(status_code=404, detail="Product not found")
@@ -269,7 +324,9 @@ def build_storefront_host(
             if request.clear_memory and not request.purge_memory:
                 await memory_seeder.reseed(host.memory_store, record.user_id)
         host.sessions.reset(record)
-        backend.reset_session(record.session_id)
+        reset_backend = getattr(backend, "reset_session", None)
+        if reset_backend:
+            reset_backend(record.session_id)
         fresh = host.sessions.start(record.user_id)
         return {"ok": True, "session_id": fresh.session_id}
 
@@ -279,10 +336,12 @@ def build_storefront_host(
         return {
             "ok": True,
             "store": backend.store_name,
-            "products": len(backend.products),
+            "products": len(backend.products) if hasattr(backend, "products") else None,
             "skills": agent.skills.names,
             "model": agent.config.model,
-            "payments": "paypal" if host.payment_runtime else None,
+            "payments": "platform"
+            if getattr(backend, "platform_checkout", False)
+            else ("paypal" if host.payment_runtime else None),
             "integrations": integration_status() if integration_status else {},
         }
 

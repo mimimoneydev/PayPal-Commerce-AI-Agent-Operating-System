@@ -273,6 +273,42 @@ def build_tools(
             },
         },
         {
+            "name": "create_paypal_order",
+            "description": (
+                "Create a PayPal Orders v2 order for the named cart lines, but only up to "
+                "the spend cap the customer explicitly set in this conversation. Pass only "
+                "product_ids a catalog or order tool returned this session and the cap as a "
+                "number; the host reads its own prices, enforces the cap and its own ceiling, "
+                "and freezes an immutable cart snapshot. The order is created, not captured: "
+                "nothing is charged until the customer approves on the PayPal page. Use only "
+                "when the customer asked the agent to buy within a stated limit; never guess "
+                "or raise the limit, and never call it twice for one purchase."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "product_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1,
+                        "maxItems": 20,
+                        "description": "product_ids from this session's catalog results to buy.",
+                    },
+                    "max_amount": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "description": (
+                            "The maximum total the customer authorized, in the cart's currency. "
+                            "The host clamps it to its own lower ceiling and refuses an "
+                            "over-cap cart."
+                        ),
+                    },
+                },
+                "required": ["product_ids", "max_amount"],
+                "additionalProperties": False,
+            },
+        },
+        {
             "name": "save_memory",
             "description": (
                 "Save a durable fact about the customer when they ask you to remember "

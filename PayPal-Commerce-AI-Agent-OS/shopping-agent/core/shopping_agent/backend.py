@@ -10,8 +10,11 @@ Everything these methods return reaches the model as fenced data (fencing.py).
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
-from typing import Any
+from collections.abc import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # the payment SDK stays out of the core agent's import path
+    from commerce_common.payments import AgentOrderReceipt
 
 from .types import (
     Cart,
@@ -143,6 +146,38 @@ class StorefrontBackend(ABC):
         :meth:`checkout_handoff` instead.
         """
         self._checkout_handoff_provider = provider
+
+    # -- Bounded PayPal order (optional host capability) -------------------------------
+
+    async def create_paypal_order(
+        self,
+        session: ShoppingSessionContext,
+        *,
+        product_ids: Sequence[str],
+        max_amount: Any,
+    ) -> AgentOrderReceipt | None:
+        """Optional: the host's PayPal Orders v2 order creation behind a spend cap.
+
+        This is a model tool, but unlike ``checkout_handoff`` it is callable from the
+        agent loop. The model passes only product ids and the shopper's cap; the host
+        re-reads its own cart, enforces the cap server-side, snapshots the cart, and
+        creates the PayPal order with server-held credentials. It never grants the agent
+        capture authority, and the returned receipt carries no payment credentials.
+        ``None`` means this deployment has no PayPal runtime installed.
+        """
+        provider: Callable[..., Awaitable[AgentOrderReceipt]] | None = getattr(
+            self, "_paypal_order_provider", None
+        )
+        if provider is None:
+            return None
+        return await provider(session, product_ids=list(product_ids), max_amount=max_amount)
+
+    def set_paypal_order_provider(
+        self, provider: Callable[..., Awaitable[AgentOrderReceipt]]
+    ) -> None:
+        """Install the host-owned PayPal order provider. The executor cannot reach the
+        PayPal client, its OAuth token, or the checkout bearer token directly."""
+        self._paypal_order_provider = provider
 
     async def get_account_context(self, session: ShoppingSessionContext) -> dict[str, Any] | None:
         """Optional account facts (plan, contract dates, computed eligibility) for the

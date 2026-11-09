@@ -6,7 +6,7 @@ description: Authoring and running behavioral evals for a shopping or merchant a
 # Commerce agent evals
 
 The repo ships no eval harness; the suite is yours, because a case only means something against your catalog,
-orders, and fixtures. Paths below are in the reference repo: `commerce_common/` is `commerce-common/commerce_common/`.
+orders, and fixtures. Paths below are in this repository: `commerce_common/` is `commerce-common/commerce_common/`.
 Gate behavior that needs no model (provenance, caps, guardrails, approval) is unit-tested with `FakeClient` in
 `commerce_common/testing.py`; evals cover what the model decides.
 

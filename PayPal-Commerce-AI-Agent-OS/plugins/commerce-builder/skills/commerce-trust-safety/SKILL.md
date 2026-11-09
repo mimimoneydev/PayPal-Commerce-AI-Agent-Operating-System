@@ -1,6 +1,6 @@
 ---
 name: commerce-trust-safety
-description: The rules the reference agents enforce in code for third-party content, writes, grounding, identity, and memory, each with its module, plus two adversarial-eval rules. Load when handling untrusted tool results, guarding a write tool, or scoping what an agent remembers.
+description: The rules the agents in this repository enforce in code for third-party content, writes, grounding, identity, and memory, each with its module, plus two adversarial-eval rules. Load when handling untrusted tool results, guarding a write tool, or scoping what an agent remembers.
 ---
 
 # Trust and safety rules
@@ -80,7 +80,7 @@ on. Merchant staging, guardrails, approval, and marketplace posture are in comme
     `tool_result` event carries `status: blocked`), a failure returns an error result, and `execute` never raises.
 19. The tool list is a function of the config: `enable_web_search` (default off) adds the tool, the SDK runtimes allow-list
     the registered names, and the manifests enable tools one by one.
-20. The reference MCP servers bind to loopback unless an environment variable states that an authenticating gateway is in
+20. The example MCP servers bind to loopback unless an environment variable states that an authenticating gateway is in
     front (`enforce_local_only_bind` in `commerce_common/mcp_server.py`).
 
 ## Two rules for adversarial evals

@@ -37,9 +37,12 @@ class MemorySeeder:
     purged user stays empty until ``reseed`` is asked for explicitly.
     """
 
-    def __init__(self, seed_file: Path, marker: Path | None = None) -> None:
+    def __init__(
+        self, seed_file: Path, marker: Path | None = None, *, enabled: bool = True
+    ) -> None:
         self._seed_file = seed_file
         self._marker = marker
+        self._enabled = enabled
 
     def _seeded_users(self) -> set[str]:
         if self._marker is None or not self._marker.exists():
@@ -47,7 +50,7 @@ class MemorySeeder:
         return set(json.loads(self._marker.read_text(encoding="utf-8") or "[]"))
 
     def _entries(self) -> dict[str, list[dict[str, Any]]]:
-        if not self._seed_file.exists():
+        if not self._enabled or not self._seed_file.exists():
             return {}
         return json.loads(self._seed_file.read_text(encoding="utf-8"))
 

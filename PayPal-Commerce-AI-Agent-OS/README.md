@@ -9,11 +9,19 @@ runs through compatible Messages API, Agent SDK, and Managed Agent runtimes.
 
 > [!NOTE]
 > Every company, brand, product, and person here is fictional; the only company is ACME.
-> The agent never places an order or handles a funding credential: `checkout` renders
-> the cart for the host to complete, and every merchant write is staged until a person
-> approves it. An optional host-owned PayPal Orders v2 integration can approve and capture
-> an immutable cart snapshot outside the model. Business rules, authorization, fulfillment,
-> and compliance are the deployment's.
+> The agent never handles a funding credential or captures money. `checkout` renders the cart
+> for the host to complete, while `create_paypal_order` lets the agent prepare a real,
+> cap-bounded PayPal Orders v2 order: the host reads its own prices, enforces the shopper's
+> spend limit and its own ceiling, freezes an immutable cart snapshot, and creates the order
+> with server-held credentials. The customer still approves on PayPal's page and the host
+> captures it. Every merchant write is staged until a person approves it. Business rules,
+> authorization, fulfillment, and compliance are the deployment's.
+
+For the case for this project (who benefits and why the payment step is the hard part), see
+[Why this matters](../README.md#why-this-matters) in the repository README. Real screenshots of
+the running retail demo are in [docs/screenshots/](docs/screenshots/) with their
+[capture provenance](docs/screenshots/README.md), and can be regenerated with
+`python scripts/capture_readme_screenshots.py`.
 
 ## Quick start: run the demos
 
@@ -49,7 +57,7 @@ systems, or reviews one you have. Add this repository as a local plugin marketpl
 
 ```bash
 claude plugin marketplace add .
-claude plugin install commerce-builder@claude-commerce-agents
+claude plugin install commerce-builder@paypal-commerce-agent-os
 claude
 /scaffold-commerce-agent a shopping assistant for our store
 ```
@@ -94,7 +102,7 @@ its analytics, catalog, inventory, pricing, and campaign systems.
 
 ## Three ways to run an agent
 
-**Messages API.** The reference loop; the examples are host applications around it:
+**Messages API.** The primary loop; the examples are host applications around it:
 
 ```python
 from pathlib import Path
@@ -125,6 +133,26 @@ python merchant-agent/runtime-agent-sdk/main.py          # approves staged chang
 scripts/deploy_managed_agent.sh shopping-agent/managed-agents/shopping-agent   # or merchant-agent/...; --live deploys
 ```
 
+## PayPal inside the agent loop
+
+PayPal is a first-class tool, not a bolt-on. The built-in `create_paypal_order` tool is
+registered in the tool registry, both agent runtimes, and the storefront MCP server. A shopper
+who names the items and a maximum total gets a real sandbox order prepared within that cap:
+
+- **Provenance.** Every `product_id` must have come from a catalog or order tool this session.
+- **Three limits.** The tool clamps the model's cap, `CheckoutService` clamps it again to
+  `COMMERCE_MAX_ORDER_AMOUNT`, and an over-cap cart is refused before any payment row exists.
+- **Host-owned money.** The server re-reads its own cart for prices, quantities and currency;
+  no payment credential, bearer checkout URL, or capture ever enters model context.
+- **Visible receipt.** The cap, immutable snapshot hash and PayPal order id appear on the hosted
+  checkout page and the in-chat checkout card. Nothing is charged until the customer approves.
+
+`scripts/run_demo.py` enables sandbox checkout by default whenever credentials are present and
+warns loudly when they are missing; `--no-paypal` is the explicit offline switch.
+`scripts/demo_paypal_order.py` records a real `create → approve → capture → webhook → status`
+run, and [`SANDBOX-PROOF.md`](SANDBOX-PROOF.md) is the honest record of what has actually been
+recorded. See [`docs/payments.md`](docs/payments.md).
+
 ## Safety
 
 Fencing, provenance gates, caps, memory validation, and the merchant approval gate run
@@ -136,9 +164,11 @@ the MCP servers bind to loopback.
 ## PayPal Commerce AI Agent OS
 
 [`docs/commerce-os.md`](docs/commerce-os.md) describes the control plane, production service
-boundaries, and build-out sequence. [`docs/payments.md`](docs/payments.md) documents the optional
-PayPal checkout: OAuth, Orders v2 create/capture, opaque checkout tokens, SQLite payment state,
-webhook verification, and the requirements that remain before a live launch.
+boundaries, and build-out sequence. [`docs/payments.md`](docs/payments.md) documents the
+PayPal checkout that is on by default: OAuth, Orders v2 create/capture, opaque checkout tokens,
+SQLite/Postgres payment state, webhook verification, the cap-bounded auto-buy tool, and the
+requirements that remain before a live launch. [`SANDBOX-PROOF.md`](SANDBOX-PROOF.md) records
+the real sandbox transaction run.
 
 ## Verticals
 
@@ -174,7 +204,19 @@ OpenRouter, GCP Vertex AI, AWS Bedrock, Microsoft Foundry, and compatible gatewa
 
 ## MCP connectors
 
-None ship; both agents reach your systems through the backend interfaces. Where an official
+The retail shopping agent now includes a [WooCommerce adapter and WordPress bridge](docs/woocommerce.md)
+with native checkout and paid-order synchronization. Set `COMMERCE_PLATFORM=woocommerce` to
+use it. To connect your store, install the [plugin](integrations/woocommerce/agent-commerce-bridge.php)
+and configure `WOOCOMMERCE_URL` and `WOOCOMMERCE_BRIDGE_SECRET` using the updated
+[`.env.example`](.env.example).
+
+A [Shopify adapter and multi-merchant administration service](docs/merchant-platform.md)
+provide native checkout, signed paid-order receipts, encrypted tenant configuration,
+durable shopper sessions, and owner-approved operations. See the guide for setup, tests,
+and remaining deployment/integration boundaries.
+
+No third-party MCP connectors ship; both agents
+reach other systems through the backend interfaces. Where an official
 connector is the source of record, it is the integration target: analytics warehouses (Snowflake,
 BigQuery, Databricks, Amplitude), finance (Stripe, Square, PayPal, QuickBooks), delivery (Slack, Google Drive, Gmail).
 A commerce platform's own MCP server for catalog, cart, or checkout is called from a backend
@@ -211,5 +253,10 @@ provenance gates stay in front of every write.
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE). Third-party notices are in
+[NOTICE](../NOTICE), attribution in [CREDITS.md](../CREDITS.md), and the work added
+for this project in [CHANGES.md](../CHANGES.md).
+
+This is an unofficial hackathon project. It is not affiliated with, endorsed by,
+or sponsored by PayPal, Inc.
 

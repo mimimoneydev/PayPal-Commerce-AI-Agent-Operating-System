@@ -7,26 +7,29 @@ import { useId } from "react";
 import { formatMoney, useCatalogIndex, safeHandoffs } from "web-shared";
 import { fetchProducts } from "@/lib/api";
 import type { CheckoutPayload, Product } from "@/lib/types";
-import { STORE_POLICY } from "@/lib/storePolicy";
+import { CONNECTED_STORE, STORE_POLICY } from "@/lib/storePolicy";
 import { DeliveryPromise, ProductImage } from "../ProductTile";
 
 export default function CheckoutSummary({ payload }: { payload: CheckoutPayload }) {
   const cart = payload.cart;
   const handoffs = safeHandoffs(payload.handoffs);
+  const receipt = payload.receipt;
   // Several summaries can coexist across turns, so the describedby id is per card.
   const handoffNoteId = useId();
   // Summary lines carry only title, price, and quantity; the catalog supplies delivery
   // dates and thumbnails.
   const catalog = useCatalogIndex(fetchProducts);
   // The policy says "over" the threshold, so a cart at exactly the threshold is not free.
-  const freeShipping = cart.subtotal > STORE_POLICY.freeShippingThreshold;
+  const freeShipping = !CONNECTED_STORE && cart.subtotal > STORE_POLICY.freeShippingThreshold;
   return (
     <section data-checkout-card className="rounded-2xl border-2 border-(--accent) bg-(--card) p-4 shadow-(--shadow-sm)">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[15px] font-semibold text-(--ink)">Ready to check out</h3>
+        <h3 className="text-[15px] font-semibold text-(--ink)">
+          {receipt ? "PayPal order ready for approval" : "Ready to check out"}
+        </h3>
         <div className="flex items-center gap-1.5">
           <span className="whitespace-nowrap rounded-full border border-(--line) bg-(--well)/60 px-2.5 py-0.5 text-[11px] font-semibold text-(--ink-soft)">
-            Not charged
+            {receipt ? "Awaiting approval" : "Not charged"}
           </span>
           {payload.fulfillment_method ? (
             <span className="rounded-full bg-(--accent-soft) px-2.5 py-0.5 text-[13px] font-semibold capitalize text-(--ink)">
@@ -36,6 +39,30 @@ export default function CheckoutSummary({ payload }: { payload: CheckoutPayload 
         </div>
       </div>
       {payload.note ? <p className="mt-1 text-[13px] text-(--ink-soft)">{payload.note}</p> : null}
+      {receipt ? (
+        // The bounded auto-buy receipt: every figure below comes from the host's
+        // immutable snapshot, not from the model's tool arguments.
+        <div
+          data-payment-receipt
+          className="mt-3 space-y-1 rounded-lg border border-(--line) bg-(--well)/40 p-3 text-[13px]"
+        >
+          <div className="flex justify-between gap-2 text-(--ink)">
+            <span>PayPal order</span>
+            <strong className="break-all">{receipt.paypal_order_id}</strong>
+          </div>
+          <div className="flex justify-between gap-2 text-(--ink)">
+            <span>Authorized cap</span>
+            <strong>{formatMoney(Number(receipt.spend_cap), receipt.currency)}</strong>
+          </div>
+          <div className="flex justify-between gap-2 text-(--ink)">
+            <span>Snapshot total</span>
+            <strong>{formatMoney(Number(receipt.amount), receipt.currency)}</strong>
+          </div>
+          <p className="break-all text-[11px] text-(--ink-soft)">
+            Snapshot {receipt.checkout_id} · sha256 {receipt.cart_hash.slice(0, 16)}…
+          </p>
+        </div>
+      ) : null}
       <div className="mt-3 space-y-2 rounded-lg bg-(--well)/60 p-3 text-sm">
         {cart.items.map((item) => {
           const product: Product =
@@ -77,7 +104,7 @@ export default function CheckoutSummary({ payload }: { payload: CheckoutPayload 
             {freeShipping ? "Free" : "Calculated at checkout"}
           </span>
         </div>
-        {!freeShipping && STORE_POLICY.freeShippingThreshold - cart.subtotal > 0 ? (
+        {!CONNECTED_STORE && !freeShipping && STORE_POLICY.freeShippingThreshold - cart.subtotal > 0 ? (
           <div className="flex justify-between text-[13px] text-(--ink-soft)">
             <span>
               Add {formatMoney(STORE_POLICY.freeShippingThreshold - cart.subtotal)} more to
@@ -128,7 +155,9 @@ export default function CheckoutSummary({ payload }: { payload: CheckoutPayload 
         </button>
       )}
       <p id={handoffNoteId} className="mt-2 text-center text-[11px] text-(--ink-soft)/80">
-        Nothing is charged here. Payment happens when you check out.
+        {receipt
+          ? "Nothing is charged yet. The customer approves this capped order on PayPal; the host captures it afterward."
+          : "Nothing is charged here. Payment happens when you check out."}
       </p>
     </section>
   );

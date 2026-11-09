@@ -53,6 +53,7 @@ class SessionRecord(Generic[StateT]):
     # Actions taken outside the conversation (a button, a server-side event) since the
     # agent's last reply; the next chat turn hands them to the model as a note.
     pending_app_events: list[str] = field(default_factory=list)
+    payment_events: list[str] = field(default_factory=list)
     # What the store holds, so ``save`` writes only the difference: the state document's
     # version and content as loaded, and how many of ``messages`` are stored. A turn that
     # rewrote earlier messages sets ``stored_messages`` to 0 and the transcript is written whole.
@@ -66,6 +67,7 @@ class SessionRecord(Generic[StateT]):
             "user_id": self.user_id,
             "state": self.state.model_dump(mode="json"),
             "pending_app_events": list(self.pending_app_events),
+            "payment_events": list(self.payment_events),
         }
 
 
@@ -94,6 +96,7 @@ class SessionStore(Generic[StateT]):
             state=self._state_type.model_validate(document["state"]),
             messages=messages,
             pending_app_events=list(document["pending_app_events"]),
+            payment_events=list(document.get("payment_events", [])),
             version=version,
             stored_state=document,
             stored_messages=len(messages),

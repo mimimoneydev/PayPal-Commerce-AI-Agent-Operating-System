@@ -50,8 +50,8 @@ tenant-scoped services while keeping their interfaces and invariants.
 |---|---|---|
 | Session and transcript | `examples/demo_common/sessions.py` | Authenticated Redis or database store with tenant keys |
 | Agent memory | in-memory and owner-only JSON stores | Encrypted, tenant-scoped database with retention jobs |
-| Payment state | `SQLitePaymentStore` | Transactional database implementing `PaymentStore` |
-| Catalog and cart | each vertical's mock backend | `StorefrontBackend` over commerce services |
+| Payment state | `SQLitePaymentStore`, `PostgresPaymentStore` | Backed-up shared PostgreSQL |
+| Catalog and cart | vertical mock backends; WooCommerce and Shopify adapters | Tenant-selected `StorefrontBackend` |
 | Operations | each vertical's merchant backend | `MerchantBackend` over analytics and operating systems |
 | Events | in-process app-event queue | Durable event bus and outbox |
 | Audit | tool events and provider records | Append-only tenant audit stream |
@@ -62,14 +62,16 @@ tenant-scoped services while keeping their interfaces and invariants.
 2. Implement the two backend interfaces over systems of record, including an atomic final
    pricing service for shipping, tax, discounts, inventory reservation, and expiry.
 3. Move sessions, payment records, memory, and staged changes to durable tenant-scoped stores.
-4. Add an order-finalization worker consuming completed captures through an outbox. It creates
-   the commerce order exactly once; it does not make the HTTP capture request responsible for
-   both payment and fulfillment.
+4. Supply a store-specific `OrderFinalizer` to the included durable outbox worker for custom
+   PayPal checkout. The destination must deduplicate checkout ids. WooCommerce native checkout
+   already creates its order; its adapter reads that order back instead of creating a second one.
 5. Add refunds, disputes, shipment tracking, reconciliation, and a double-entry ledger as
    separate permissioned workflows.
 6. Add rate limits, fraud and sanctions controls, observability, key rotation, backup/restore,
    deletion workflows, and operational runbooks.
 
-The included PayPal slice completes payment approval and capture. It intentionally does not
-claim to implement tax, fraud, fulfillment, refunds, disputes, or a financial ledger. Those are
-business systems, not model behaviors.
+The included PayPal slice completes payment approval and capture. The optional
+[merchant control service](merchant-platform.md) adds tenant administration, durable shopper
+sessions, manual fraud review, approved provider operations, and Shopify clearing journals.
+These are explicit business workflows, not model behaviors; see the guide for supported
+actions and remaining integration boundaries.

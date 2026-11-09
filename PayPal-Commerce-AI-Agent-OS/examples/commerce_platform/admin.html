@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Commerce merchant administration</title><script src="/admin.js" defer></script></head>
+<body><main><h1>Commerce merchant administration</h1>
+<p>Connect a store, manage merchant access, and inspect the audit trail.</p>
+<p id="status" role="status" aria-live="polite"></p>
+<section id="auth"><h2>Sign in or register</h2><form id="login">
+<p><label>Email <input name="email" type="email" autocomplete="username" required></label></p>
+<p><label>Password <input name="password" type="password" autocomplete="current-password" minlength="12" required></label></p>
+<p><label>Invitation code (registration only) <input name="invitation" type="password"></label></p>
+<button name="action" value="login">Sign in</button> <button name="action" value="register">Register</button>
+</form></section>
+<section id="dashboard" hidden><button id="logout">Sign out</button><h2>Your merchants</h2>
+<form id="create"><label>New merchant name <input name="name" required maxlength="100"></label><button>Create merchant</button></form>
+<p><label>Merchant <select id="merchants"></select></label></p>
+<section id="merchant" hidden><h2>Store connection</h2><p id="connection-status"></p>
+<p>Shopify requires a Storefront API token. WooCommerce requires the bridge plugin secret and an operator-approved hostname. Existing credentials are never displayed.</p>
+<form id="connection"><p><label>Platform <select name="platform"><option value="woocommerce">WooCommerce</option><option value="shopify">Shopify</option></select></label></p>
+<p><label>HTTPS store origin <input name="url" type="url" required placeholder="https://your-store.myshopify.com"></label></p>
+<p><label>Token or bridge secret <input name="secret" type="password" minlength="32" required autocomplete="off"></label></p>
+<p><label>Shopify webhook signing secret <input name="webhook_secret" type="password" autocomplete="off"></label></p>
+<button>Save connection</button></form><p><button id="test">Test connection</button></p>
+<p><button id="publish">Publish storefront API</button> <button id="unpublish">Unpublish</button></p><p id="storefront-url"></p>
+<h2>Team access</h2><form id="member"><label>Registered email <input name="email" type="email" required></label> <label>Role <select name="role"><option>staff</option><option>owner</option></select></label> <button>Add member</button></form>
+<h2>Accounting</h2><p><a id="ledger">Download journal CSV</a></p>
+<p><button id="sync-accounting">Sync WooCommerce accounting page</button> <span id="accounting-status"></span></p>
+<h2>Operational credentials</h2><p>Optional. Use merchant-specific credentials with only required scopes. Saving replaces existing operational credentials.</p>
+<form id="ops-credentials"><p><label>Shopify Admin token <input name="shopify_admin_token" type="password" autocomplete="off"></label></p>
+<p><label>PayPal client ID <input name="paypal_client_id" autocomplete="off"></label> <label>PayPal client secret <input name="paypal_client_secret" type="password" autocomplete="off"></label></p>
+<p><label><input name="paypal_sandbox" type="checkbox" checked> PayPal sandbox</label></p><button>Save operational credentials</button></form>
+<h2>Fraud review</h2><p>Manual review gates shipments submitted here. It does not stop external warehouse automation or replace a fraud-screening provider.</p>
+<form id="review"><label>Order ID <input name="order_id" required></label> <label>Decision <select name="decision"><option>hold</option><option>release</option><option>reject</option></select></label><p><label>Reason <input name="reason" required maxlength="2000"></label></p><button>Record review</button></form>
+<h2>Operations</h2><p>Stage, inspect, approve, then execute. Shipment records certify that the merchant has shipped; this does not buy a label or physically dispatch a parcel. Refund execution moves money. Unknown/running results require provider reconciliation and must not be restaged blindly.</p>
+<form id="operation"><label>Type <select name="kind"><option value="shipment">Shipment</option><option value="refund">WooCommerce refund</option><option value="dispute_evidence">PayPal dispute evidence</option></select></label>
+<p><label>Order or dispute ID <input name="order_id" required></label></p><label>JSON payload <textarea name="payload" rows="5" cols="65" required>{"tracking_number":"","tracking_url":"https://"}</textarea></label>
+<p>Refund: {"amount":"10.00","reason":"Customer request"}. Evidence: {"notes":"Factual evidence notes"}.</p><button>Stage for review</button></form>
+<div id="operations"></div>
+<h2>Audit trail</h2><button id="refresh">Refresh</button><pre id="audit"></pre>
+</section></section></main></body></html>

@@ -29,7 +29,15 @@ from shopping_agent_sdk import ShoppingToolset
 from shopping_agent_sdk import tool_names as shopping_sdk_tool_names
 
 SHOPPING_SWITCHES = {
-    "enable_cart": {"get_cart", "add_to_cart", "update_cart_item", "remove_from_cart", "checkout"},
+    "enable_cart": {
+        "get_cart",
+        "add_to_cart",
+        "update_cart_item",
+        "remove_from_cart",
+        "checkout",
+        "create_paypal_order",
+    },
+    "enable_agentic_payments": {"create_paypal_order"},
     "enable_orders": {"get_orders", "get_order_status", "present_order_status"},
     "enable_policies": {"search_policies"},
     "enable_fulfillment": {"get_fulfillment_options"},
@@ -98,6 +106,26 @@ async def test_the_executor_refuses_a_switched_off_tool_on_any_path():
     assert not (await executor.execute("search_products", {"query": "tent"})).is_error
 
 
+async def test_paypal_order_tool_needs_both_cart_and_agentic_payments():
+    """The PayPal-native tool is on by default but disappears on either switch, on
+    every runtime: the registry, the executor, the Agent SDK, and the MCP server."""
+    backend = storefront_mcp_server._default_backend()
+    payload = {"product_ids": ["p-100"], "max_amount": 100}
+    for switches in ({"enable_cart": False}, {"enable_agentic_payments": False}):
+        executor = ShoppingToolset(backend=backend, config=shopping(**switches)).executor
+        refused = await executor.execute("create_paypal_order", payload)
+        assert refused.is_error and "not something this store offers" in refused.result_text
+        assert "create_paypal_order" not in shopping_sdk_tool_names(shopping(**switches))
+
+    on = shopping()
+    assert "create_paypal_order" in names(shopping_tools(on, []))
+    assert "create_paypal_order" in shopping_sdk_tool_names(on)
+    server = storefront_mcp_server.build_server(memory_store=InMemoryMemoryStore(), config=on)
+    async with create_connected_server_and_client_session(server) as client:
+        listed = {tool.name for tool in (await client.list_tools()).tools}
+    assert "create_paypal_order" in listed
+
+
 # -- static prompt ---------------------------------------------------------------------
 
 
@@ -106,8 +134,14 @@ def test_shopping_prompt_follows_the_switches():
     full = shopping_static_system(shopping(), skills)
     for phrase in ("checkout stages", "A cart tool", "search_policies or get_fulfillment"):
         assert phrase in full
+    assert "create_paypal_order is the customer's bounded auto-buy" in full
+
+    no_payments = shopping_static_system(shopping(enable_agentic_payments=False), skills)
+    assert "create_paypal_order" not in no_payments
+    assert "checkout stages" in no_payments  # the ordinary staged checkout stays
 
     no_cart = shopping_static_system(shopping(enable_cart=False), skills)
+    assert "create_paypal_order" not in no_cart
     for phrase in ("cart", "checkout", "add, remove, buy"):
         assert phrase not in no_cart.split("# Trust and data")[0].lower().replace(
             "customer-care", ""

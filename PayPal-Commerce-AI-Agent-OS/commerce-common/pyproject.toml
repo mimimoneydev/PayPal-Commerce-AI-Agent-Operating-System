@@ -20,6 +20,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+platform = ["sqlalchemy>=2.0,<3", "cryptography>=44", "psycopg[binary]>=3.2,<4"]
+payments = ["psycopg[binary]>=3.2,<4"]
 # The optional modules: commerce_common.agent_sdk and commerce_common.mcp_server.
 sdk = ["claude-agent-sdk>=0.2.139", "mcp>=1.2"]
 mcp = ["mcp>=1.2"]

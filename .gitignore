@@ -1,0 +1,11 @@
+# Repository-root ignore rules. The application subtree has its own
+# PayPal-Commerce-AI-Agent-OS/.gitignore for Python/Node/runtime artifacts.
+
+# Compressed copy of the VPS upload bundle. Generated locally, never committed.
+/deployment.zip
+
+# macOS metadata
+.DS_Store
+
+# Local-only agent tooling state
+.workbuddy-ai/

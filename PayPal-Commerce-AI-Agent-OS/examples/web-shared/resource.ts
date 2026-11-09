@@ -16,13 +16,16 @@ export function useResource<T>(load: (() => Promise<T | null>) | null, deps: Dep
   useEffect(() => {
     if (!load) return;
     let cancelled = false;
-    void load().then((response) => {
+    const refresh = () => { void load().then((response) => {
       if (cancelled) return;
       if (response) setData(response);
       setFailed(!response);
-    });
+    }); };
+    refresh();
+    window.addEventListener("focus", refresh);
     return () => {
       cancelled = true;
+      window.removeEventListener("focus", refresh);
     };
     // The caller's deps say when to reload; `load` is usually an inline closure.
   }, deps);

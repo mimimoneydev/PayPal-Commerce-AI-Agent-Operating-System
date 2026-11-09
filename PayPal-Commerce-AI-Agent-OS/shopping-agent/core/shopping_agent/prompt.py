@@ -91,6 +91,16 @@ def build_static_system(config: ShoppingAgentConfig, skills: SkillRegistry) -> s
         if config.enable_fulfillment
         else ""
     )
+    autobuy_rule = (
+        "\n- create_paypal_order is the customer's bounded auto-buy. Call it only when "
+        "the customer named both the items and a maximum total in this conversation, and "
+        "only with product_ids a catalog or order tool returned this session. Never invent, "
+        "widen, or round a cap; the host enforces it against its own prices and ceiling. It "
+        "creates a PayPal order and a receipt, not a payment: say the customer still has to "
+        "approve it, and never say the purchase is complete."
+        if cart and config.enable_agentic_payments
+        else ""
+    )
     cart_rules = (
         "\n- A cart tool changes exactly what the customer asked to change, quantity "
         "included; do not add an extra, an add-on, or a warranty they did not ask for. When "
@@ -105,6 +115,7 @@ def build_static_system(config: ShoppingAgentConfig, skills: SkillRegistry) -> s
         "it, finish the staging this turn: add anything they settled "
         "on that never reached the cart, point out anything in the cart the conversation "
         f"does not account for (a duplicate line, an unexplained quantity){fulfillment_clause}."
+        f"{autobuy_rule}"
         if cart
         else ""
     )
