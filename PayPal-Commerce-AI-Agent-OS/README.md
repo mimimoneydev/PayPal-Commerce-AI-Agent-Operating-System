@@ -257,6 +257,6 @@ Licensed under the [Apache License 2.0](LICENSE). Third-party notices are in
 [NOTICE](../NOTICE), attribution in [CREDITS.md](../CREDITS.md), and the work added
 for this project in [CHANGES.md](../CHANGES.md).
 
-This is an unofficial hackathon project. It is not affiliated with, endorsed by,
-or sponsored by PayPal, Inc.
+Independent submission to the PayPal AI Hackathon, built with the PayPal sandbox APIs.
+PayPal, Inc. is the hackathon sponsor.
 
