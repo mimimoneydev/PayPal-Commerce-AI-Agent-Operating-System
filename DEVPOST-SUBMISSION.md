@@ -2,9 +2,10 @@
 
 > **Draft for the submitter. Do not paste until the checklist at the bottom is complete.**
 >
-> Every `{{PLACEHOLDER}}` below must be replaced with a real value. Nothing in this file
-> invents an order id, a capture id, a sandbox credential, a video URL, a deployed URL, or a
-> usage metric. Where evidence does not exist yet, the text says so or omits the claim.
+> The demo URLs and public repository URL below are real and were verified live. Every
+> remaining `{{PLACEHOLDER}}` must be replaced with a real value before pasting. Nothing in
+> this file invents an order id, a capture id, a sandbox credential, a video URL, or a usage
+> metric. Where evidence does not exist yet, the text says so or omits the claim.
 
 ---
 
@@ -88,6 +89,14 @@ catalog and staged-change approval — with capture provenance and a script to r
 The receipt frame is explicitly labelled a component fixture; it is not presented as a
 transaction.
 
+**Try it now (no install needed):** the storefront is live at
+**https://shop.mimi.money** (search, compare, add to cart) and the merchant portal at
+**https://agentos.mimi.money** (staged changes require human approval). Both hosts were
+verified responding. The hosted deployment currently runs without sandbox payment
+credentials, so the full `create → buyer approve → capture → signed webhook` path is
+reproduced with the local setup in section 6.3, not claimed on those hosts. See section 6.4
+for the exact hosted-demo state and how the receipt flow is enabled.
+
 **Scope honesty:** the verticals use fictional ACME catalogs and fixture data. This is a
 developer platform and demo, not a live merchant deployment. No real customer, real revenue,
 or production transaction is claimed.
@@ -125,7 +134,8 @@ Next.js / TypeScript / React / Tailwind; pytest, Ruff; Channel3, AG Grid, Bryntu
 | Sandbox **personal / buyer** account password | `{{BUYER_PASSWORD}}` |
 | OpenRouter API key (for chat turns) | `{{OPENROUTER_API_KEY}}` |
 | Webhook id, if a signed-event demo is provided | `{{PAYPAL_WEBHOOK_ID}}` |
-| Hosted demo URL, if deployed | `{{DEMO_URL}}` |
+| Storefront demo URL (public, no credentials) | `https://shop.mimi.money` |
+| Merchant portal demo URL (public, no credentials) | `https://agentos.mimi.money` |
 
 Create these in the [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/):
 one sandbox **business** app for the server credentials, one sandbox **personal** account for
@@ -139,8 +149,8 @@ Python 3.11+, Node 22, npm, git. A PayPal developer account and an OpenRouter ke
 ### 6.3 Install and run
 
 ```bash
-git clone {{PUBLIC_REPO_URL}}
-cd {{REPO_DIR}}
+git clone https://github.com/mimimoneydev/PayPal-Commerce-AI-Agent-Operating-System.git
+cd PayPal-Commerce-AI-Agent-Operating-System
 cd PayPal-Commerce-AI-Agent-OS
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -169,9 +179,32 @@ python scripts/run_demo.py retail
 `--no-paypal` runs the same UI in explicit offline mode with no PayPal routes. Browsing the
 catalog, the product pages, and the portal widgets needs no credentials at all.
 
-### 6.4 What to test, in order
+### 6.4 Hosted demo (fastest path, no install)
 
-1. **Ordinary agent loop.** Open `http://localhost:3000` and say:
+| Surface | URL | What to do |
+|---|---|---|
+| Storefront | **https://shop.mimi.money** | Search, compare, add to cart. |
+| Merchant portal | **https://agentos.mimi.money** | Review staged changes; nothing writes until a human approves. |
+
+Both hosts need no credentials to browse. With sandbox credentials enabled, ask the shopping
+agent to buy items *"up to $X"* — the bounded auto-buy tool returns a visible receipt with
+the cap, the immutable cart hash and the PayPal order id, and nothing is charged until the
+buyer approves on PayPal's page.
+
+> **Current hosted-demo state (verified 9 Nov 2026).** Both hosts return HTTP 200, but
+> `GET https://shop.mimi.money/api/health` reports `"payments": null` and the
+> `/api/payments/paypal/...` routes are not registered. The VPS `.env` has no sandbox
+> credentials yet. To enable the full PayPal path on the hosted demo, set
+> `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENVIRONMENT=sandbox`,
+> `COMMERCE_PUBLIC_API_URL` and the OpenRouter key in
+> `PayPal-Commerce-AI-Agent-OS/.env`, restart the API service, and confirm `/api/health`
+> reports `"payments": "paypal"`. Until that is done, run section 6.3 locally for steps
+> 2–7 below. No order id or transaction is claimed for the hosted hosts.
+
+### 6.5 What to test, in order
+
+1. **Ordinary agent loop.** Open `http://localhost:3000` (or https://shop.mimi.money for
+   browsing) and say:
    *"I'm taking my partner and our 6-year-old camping for the first time next month. We need
    a tent — nothing too heavy to deal with, ideally under $250."*
    Then: *"Compare the top two options for me — mostly care about space and ease of setup."*
@@ -222,7 +255,7 @@ catalog, the product pages, and the portal widgets needs no credentials at all.
    python scripts/verify_all.py
    ```
 
-### 6.5 Troubleshooting
+### 6.6 Troubleshooting
 
 - Missing PayPal credentials produce a loud startup warning; the UI still runs in offline
   mode. Use `python scripts/run_demo.py retail --no-paypal` to make that explicit.
@@ -236,18 +269,24 @@ catalog, the product pages, and the portal widgets needs no credentials at all.
 
 | Field | Value |
 |---|---|
-| Public code repository | `{{PUBLIC_REPO_URL}}` |
+| Public code repository | `https://github.com/mimimoneydev/PayPal-Commerce-AI-Agent-Operating-System` |
 | Demo video (public YouTube, < 3 min) | `{{YOUTUBE_URL}}` |
-| Hosted demo (optional — setup instructions above also satisfy access) | `{{DEMO_URL}}` |
+| Hosted demo — storefront | `https://shop.mimi.money` |
+| Hosted demo — merchant portal | `https://agentos.mimi.money` |
 | Gallery images (upload from the repo, no upload URL needed) | `PayPal-Commerce-AI-Agent-OS/docs/screenshots/01-storefront-home.png`, `04-bounded-autobuy-receipt.png`, `06-merchant-home.png`, `08-staged-change-approval.png` |
 
 ## 8. Before you submit — checklist
 
-- [ ] Create/restore the public GitHub repo and push all local changes; confirm the `LICENSE`
-      is detected in the repository's **About** section. Only **one** commit exists locally
-      and ~80 files are still uncommitted — this is the highest-priority blocker.
-- [ ] Replace every `{{PLACEHOLDER}}` above; put judge credentials in the Devpost testing
-      instructions field, never in the repo.
+- [x] Public GitHub repo is live at
+      `https://github.com/mimimoneydev/PayPal-Commerce-AI-Agent-Operating-System` with the
+      Apache-2.0 `LICENSE`; all local changes are committed and pushed (2 commits, clean
+      working tree). The demo URLs and public repo URL in this file are real and verified.
+- [ ] Replace the remaining `{{PLACEHOLDER}}` values: judge credentials in section 6.1,
+      `{{YOUTUBE_URL}}` in section 7, and the real order / capture / event ids in section 4.
+      Put judge credentials in the Devpost testing instructions field, never in the repo.
+- [ ] Enable PayPal sandbox credentials on the VPS (section 6.4) and confirm
+      `GET https://shop.mimi.money/api/health` reports `"payments": "paypal"` before judges
+      test the bounded auto-buy receipt on the hosted demo.
 - [ ] README screenshots are already present in `PayPal-Commerce-AI-Agent-OS/docs/screenshots/`
       and are labelled honestly. Still to do: run one real sandbox transaction, regenerate
       `SANDBOX-PROOF.md`, capture approval / receipt / captured-state screenshots into

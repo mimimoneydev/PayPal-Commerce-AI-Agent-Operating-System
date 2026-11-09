@@ -19,6 +19,11 @@ runs through compatible Messages API, Agent SDK, and Managed Agent runtimes.
 
 ## Live demo
 
+| Surface | Demo URL |
+|---|---|
+| Storefront | **https://shop.mimi.money** |
+| Merchant portal | **https://agentos.mimi.money** |
+
 Try the running demo in a browser:
 
 1. **https://shop.mimi.money** — storefront; search, compare, add to cart.
@@ -27,6 +32,11 @@ Try the running demo in a browser:
    id. Nothing is charged until the buyer approves on PayPal's page.
 3. **https://agentos.mimi.money** — merchant portal; staged changes require
    human approval.
+
+The hosted storefront and portal are running. PayPal checkout is enabled only when sandbox
+credentials are supplied to the deployment; see
+[`DEVPOST-SUBMISSION.md`](DEVPOST-SUBMISSION.md) section 6.4 for the current hosted-demo
+state and the local setup that exercises the full PayPal order → approval → capture path.
 
 ![The running ACME retail storefront: assistant home, order awareness and the generative product shelf.](PayPal-Commerce-AI-Agent-OS/docs/screenshots/01-storefront-home.png)
 
