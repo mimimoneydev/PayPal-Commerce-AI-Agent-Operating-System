@@ -1,3 +1,43 @@
+<p align="center">
+
+[![Apache License 2.0](https://img.shields.io/badge/Apache_2.0-Open_Source-D22128?style=for-the-badge&logo=apache&logoColor=white)](./LICENSE)
+
+</p>
+
+**Payments and commerce platform**
+
+[![PayPal](https://img.shields.io/badge/PayPal-Orders_v2-003087?style=for-the-badge&logo=paypal&logoColor=white)](https://developer.paypal.com/docs/api/orders/v2/)
+[![PayPal Sandbox](https://img.shields.io/badge/PayPal-Sandbox-0070E0?style=for-the-badge&logo=paypal&logoColor=white)](https://developer.paypal.com/tools/sandbox/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Commerce_Host-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+
+**AI models, gateways and agent runtimes**
+
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-LLM_Gateway-6467F2?style=for-the-badge&logo=openrouter&logoColor=white)](https://openrouter.ai/)
+[![DeepSeek](https://img.shields.io/badge/DeepSeek-V4.1_Flash-4D6BFE?style=for-the-badge&logo=deepseek&logoColor=white)](https://www.deepseek.com/)
+[![Anthropic](https://img.shields.io/badge/Anthropic-Messages_API-D4A574?style=for-the-badge&logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/api/messages)
+[![Claude Agent SDK](https://img.shields.io/badge/Claude-Agent_SDK-D97757?style=for-the-badge&logo=claude&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code/sdk/sdk-overview)
+[![Managed Agents](https://img.shields.io/badge/Managed_Agents-Hosted_Runtime-5B3FD6?style=for-the-badge&logo=anthropic&logoColor=white)](./PayPal-Commerce-AI-Agent-OS/merchant-agent/managed-agents/)
+[![MCP](https://img.shields.io/badge/MCP-Tool_Servers-111111?style=for-the-badge&logoColor=white)](https://modelcontextprotocol.io/)
+
+**Sponsor tools**
+
+[![AG Grid](https://img.shields.io/badge/AG_Grid-AG_Studio-0084E7?style=for-the-badge&logo=aggrid&logoColor=white)](https://www.ag-grid.com/)
+[![APIMatic](https://img.shields.io/badge/APIMatic-OpenAPI_to_SDK-0B5FFF?style=for-the-badge&logoColor=white)](https://www.apimatic.io/)
+[![Channel3](https://img.shields.io/badge/Channel3-Retail_Discovery-00A99D?style=for-the-badge&logoColor=white)](https://www.trychannel3.com/)
+[![Bryntum](https://img.shields.io/badge/Bryntum-Scheduler-7C4DFF?style=for-the-badge&logoColor=white)](https://bryntum.com/products/scheduler/)
+
+**Application and data stack**
+
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Pydantic](https://img.shields.io/badge/Pydantic-Validated_Contracts-E92063?style=for-the-badge&logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=111111)](https://react.dev/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Android](https://img.shields.io/badge/Android-Native_App-3DDC84?style=for-the-badge&logo=android&logoColor=white)](./Android%20App/)
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest_V3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](./Chrome%20extension/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Durable_State-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-Local_Demo_State-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+
 # PayPal Commerce AI Agent Operating System
 
 **PayPal Commerce AI Agent Operating System**, shortened to **PayPal Commerce AI Agent OS**,
