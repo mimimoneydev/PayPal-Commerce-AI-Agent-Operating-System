@@ -6,6 +6,16 @@
 > remaining `{{PLACEHOLDER}}` must be replaced with a real value before pasting. Nothing in
 > this file invents an order id, a capture id, a sandbox credential, a video URL, or a usage
 > metric. Where evidence does not exist yet, the text says so or omits the claim.
+>
+> **For the seven Devpost form questions** (Inspiration, What it does, How we built it,
+> Challenges, Accomplishments, What we learned, What's next), paste from
+> [`DEVPOST-SUBMISSION-HUMAN.md`](DEVPOST-SUBMISSION-HUMAN.md) — the human-voice version,
+> with a phased, implementable roadmap at the bottom.
+> [`DEVPOST-FORM-ANSWERS.md`](DEVPOST-FORM-ANSWERS.md) is the longer technical version with
+> exact identifiers and test counts. Both cover PayPal Sandbox as the project's centre, the
+> sponsored tools (Channel3, AG Studio/AG Grid, Bryntum, APIMatic), the Chrome extension and
+> Android app, and the verified 1197-test evidence. This file remains the title, description,
+> tools, testing-instructions and checklist reference.
 
 ---
 
@@ -112,7 +122,9 @@ verified responding, and the storefront now runs with PayPal sandbox credentials
 sandbox order (`94818182GP238811W`, `PAYER_ACTION_REQUIRED`, `219.00 USD`) behind the
 provenance gate and spend cap. **No buyer approval, capture, or completed transaction is
 claimed** — see `SANDBOX-PROOF.md` for the honest partial state and section 6.4 for the
-exact hosted-demo status.
+exact hosted-demo status. The same governed API also powers two installable clients: a
+Manifest V3 **Chrome extension** and a native **Android app** (65 KB APK), both with voice
+input and the cap-bounded checkout receipt, neither holding a credential — see section 6.4.
 
 **Scope honesty:** the verticals use fictional ACME catalogs and fixture data. This is a
 developer platform and demo, not a live merchant deployment. No real customer, real revenue,
@@ -133,8 +145,9 @@ proof/screenshots/.
 ## 5. Tools and technologies (paste into the tools/technologies field)
 
 ```
-PayPal Orders v2 REST API, PayPal JavaScript SDK, PayPal Webhooks (signature verification),
-PayPal sandbox, PayPal Partner Referrals; OpenRouter / deepseek-v4.1-flash; Python 3.11+,
+PayPal sandbox (centre of the project): Orders v2 REST API, PayPal JavaScript SDK,
+PayPal Webhooks (signature verification), PayPal Partner Referrals;
+OpenRouter / deepseek-v4.1-flash; Python 3.11+,
 FastAPI, Pydantic, SQLite, PostgreSQL/SQLAlchemy, httpx; Model Context Protocol (mcp 1.29.0);
 Next.js / TypeScript / React / Tailwind; Android SDK (aapt2, javac, d8, zipalign, apksigner),
 Java, WebView + JavascriptInterface, Android SpeechRecognizer, Gradle / Android Studio,
