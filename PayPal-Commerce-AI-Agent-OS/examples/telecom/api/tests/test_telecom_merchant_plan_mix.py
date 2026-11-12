@@ -116,6 +116,9 @@ async def test_promotion_apply_flow_through_the_executor(
     prices = {row["plan_id"]: row["price"] for row in ui.data["payload"]["plans"]}
     assert prices == {"AM-PLAN-102": 50.0, "AM-NET-301": 50.0}
 
+    # AI auto-approval applied this change at stage time. A second apply is a safe
+    # no-op with a friendly note, not a tool error and not a second backend write.
     again = await merchant_executor.execute("apply_change", {"change_id": change_id})
-    assert again.is_error
-    assert "applied" in again.result_text
+    assert not again.is_error and again.blocked is None
+    assert "already" in again.result_text and "applied" in again.result_text
+    assert not again.events

@@ -108,6 +108,12 @@ const PATHS = {
   x: <path d="M6 6l12 12M18 6 6 18" />,
   expand: <path d="M14 4.5h5.5V10M10 19.5H4.5V14M19.5 4.5 13.5 10.5M4.5 19.5l6-6" />,
   collapse: <path d="M19.5 10H14V4.5M4.5 14H10v5.5M14 10l5.5-5.5M10 14l-5.5 5.5" />,
+  mic: (
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7" />
+    </>
+  ),
   "arrow-up": <path d="M12 19V5M6 11l6-6 6 6" strokeWidth={2} />,
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
   "chevron-right": <path d="m9 6 6 6-6 6" />,

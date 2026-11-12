@@ -6,11 +6,19 @@
 
     python scripts/demo_paypal_order.py --check          # validate config, no network
     python scripts/demo_paypal_order.py                  # full sandbox run
+    python scripts/demo_paypal_order.py --resume-order 94818182GP238811W \
+        --amount 219.00 --currency USD --cap 250.00      # finish an existing sandbox order
 
 Flow, all against api-m.sandbox.paypal.com:
 
-    immutable cart snapshot -> create Orders v2 order -> buyer approves in a browser
-    -> capture -> signed webhook reconciliation -> provider order status -> proof
+    immutable cart snapshot -> create (or resume a real) Orders v2 order
+    -> buyer approves in a browser -> capture -> signed webhook reconciliation
+    -> provider order status -> proof
+
+``--resume-order`` exists because a demo order can outlive its hosted checkout draft.
+It does NOT invent a second order: it reads the provider's own order, refuses to bind
+a local snapshot whose amount or currency differs, then records the real ids from
+PayPal. It is the only way to complete an order created earlier by the agent loop.
 
 This script NEVER invents an order id, capture id, webhook event, screenshot, or
 credential. Every value in the generated proof comes from a live PayPal response or
@@ -36,6 +44,7 @@ import time
 import urllib.request
 import webbrowser
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -147,6 +156,31 @@ def step(name: str, status: str, **fields: Any) -> dict[str, Any]:
     return {"step": name, "status": status, **fields}
 
 
+def resume_mismatch(
+    draft_amount: Any,
+    draft_currency: str,
+    order_amount: Any,
+    order_currency: str | None,
+) -> str | None:
+    """Why a local snapshot must NOT be bound to an existing provider order.
+
+    Returns ``None`` when they match. Pure and offline-testable: resuming an order
+    created earlier by the agent loop must never silently re-price that real order.
+    """
+    if order_amount is None or not order_currency:
+        return "PayPal did not return the order's purchase amount and currency"
+    if str(draft_currency).upper() != str(order_currency).upper():
+        return f"currency mismatch: provider {order_currency}, snapshot {draft_currency}"
+    try:
+        local = Decimal(str(draft_amount))
+        provider = Decimal(str(order_amount))
+    except (InvalidOperation, ValueError):
+        return "purchase amount could not be compared"
+    if local != provider:
+        return f"amount mismatch: provider {order_amount}, snapshot {draft_amount}"
+    return None
+
+
 def render_proof(proof: dict[str, Any]) -> str:
     steps = proof["steps"]
     screenshots = proof["screenshots"]
@@ -226,6 +260,9 @@ def render_proof(proof: dict[str, Any]) -> str:
         "export PAYPAL_ENVIRONMENT=sandbox",
         "python scripts/demo_paypal_order.py --check",
         "python scripts/demo_paypal_order.py",
+        "# To finish an order the agent already created but whose hosted draft expired:",
+        "python scripts/demo_paypal_order.py --resume-order <REAL-ORDER-ID> \\",
+        "    --amount <that order's amount> --currency <that order's currency>",
         "python scripts/run_demo.py retail   # PayPal is on by default",
         "```",
         "",
@@ -267,12 +304,14 @@ async def run(args: argparse.Namespace) -> int:
 
     from commerce_common.payments import (
         CheckoutService,
+        CheckoutStatus,
         PaymentError,
         PaymentItem,
         PayPalClient,
         PayPalConfig,
         SQLitePaymentStore,
         money,
+        token_digest,
     )
 
     load_environment(args.env_file)
@@ -316,8 +355,27 @@ async def run(args: argparse.Namespace) -> int:
         )
         print(f"  spend cap      {args.cap}")
         print(f"  host ceiling   {args.ceiling}")
+        print(f"  resume order   {args.resume_order or '(new order)'}")
+        if args.resume_order:
+            print(f"  resume amount  {args.amount} {args.currency}")
         print("  no network calls were made; no transaction was recorded")
         return 0
+
+    cap = money(min(money(args.cap), money(args.ceiling)))
+    proof["spend_cap"] = str(cap)
+    proof["ceiling"] = str(money(args.ceiling))
+
+    # Resuming a 219.00 order with the script's 25.00 default cap would be refused by
+    # create_checkout before we ever reach PayPal. Say exactly what to change instead,
+    # before any file, socket or HTTP client is opened.
+    if args.resume_order.strip() and money(args.amount) > cap:
+        print(
+            f"REFUSING resume: the order amount {money(args.amount)} {args.currency} exceeds "
+            f"the effective cap {cap} (--cap {args.cap}, --ceiling {args.ceiling}). "
+            f"Pass --cap {money(args.amount)} or higher to match the order's authorized cap."
+        )
+        print("Nothing was written; no identifiers were invented.")
+        return 2
 
     PROOF_DIR.mkdir(parents=True, exist_ok=True)
     collector = WebhookCollector(PROOF_DIR / "webhook-events.jsonl", args.webhook_port)
@@ -328,9 +386,6 @@ async def run(args: argparse.Namespace) -> int:
         merchant_id="sandbox-proof",
         max_order_amount=args.ceiling,
     )
-    cap = money(min(money(args.cap), money(args.ceiling)))
-    proof["spend_cap"] = str(cap)
-    proof["ceiling"] = str(money(args.ceiling))
 
     if not args.no_webhook_listener:
         try:
@@ -370,43 +425,117 @@ async def run(args: argparse.Namespace) -> int:
                 spend_cap=str(draft.spend_cap),
             )
         )
-        created = await service.create_order(token)
-        order_id = created.paypal_order_id or ""
-        proof["steps"].append(
-            step(
-                "create Orders v2 order",
-                "RECORDED",
-                paypal_order_id=order_id,
-                status=created.status,
-                approval_url=created.approval_url,
+        resume_id = args.resume_order.strip()
+        if resume_id:
+            # The hosted checkout draft for an agent-created order can expire while the
+            # PayPal order is still PAYER_ACTION_REQUIRED. Finish THAT order rather than
+            # creating a second one, and refuse to re-price it locally.
+            existing = await client.get_order(resume_id)
+            mismatch = resume_mismatch(
+                draft.amount,
+                draft.currency,
+                existing.purchase_amount,
+                existing.purchase_currency,
             )
-        )
-        print(f"\nPayPal order created: {order_id}")
-        if created.approval_url:
+            if mismatch:
+                raise PaymentError(
+                    f"Refusing to resume {resume_id}: {mismatch}. "
+                    "Pass --amount/--currency matching the provider order."
+                )
+            if existing.order_id != resume_id:
+                raise PaymentError(f"PayPal returned a different order id: {existing.order_id}")
+            service.assert_within_cap(draft)
+            prior = await service.store.get_by_order_id(resume_id)
+            if prior is None:
+                created = await service.store.update(
+                    draft.model_copy(
+                        update={
+                            "paypal_order_id": resume_id,
+                            "approval_url": existing.approval_url,
+                            "provider_status": existing.status,
+                            "status": CheckoutStatus.CREATED,
+                        }
+                    ),
+                    draft.version,
+                )
+                reused = False
+            else:
+                # A previous resume attempt already bound a quote to this order and timed
+                # out waiting for the buyer. Re-running must not fight the store's unique
+                # paypal_order_id constraint: rotate the bearer token on that same quote
+                # so this run can spend it, and keep one local row per real order.
+                created = await service.store.update(
+                    prior.model_copy(update={"token_hash": token_digest(token)}),
+                    prior.version,
+                )
+                reused = True
+            order_status = existing.status
+            proof["steps"].append(
+                step(
+                    "resume existing Orders v2 order",
+                    "RECORDED",
+                    paypal_order_id=resume_id,
+                    provider_status=existing.status,
+                    approval_url=existing.approval_url,
+                    amount=str(existing.purchase_amount),
+                    currency=existing.purchase_currency,
+                    note="reused the local quote from an earlier resume attempt"
+                    if reused
+                    else "bound a fresh immutable quote",
+                )
+            )
+        else:
+            created = await service.create_order(token)
+            order_status = str(created.provider_status or "")
+            proof["steps"].append(
+                step(
+                    "create Orders v2 order",
+                    "RECORDED",
+                    paypal_order_id=created.paypal_order_id,
+                    provider_status=order_status,
+                    approval_url=created.approval_url,
+                )
+            )
+        order_id = created.paypal_order_id or ""
+        checkout_id = created.checkout_id
+        print(f"\nPayPal order: {order_id} (provider status {order_status or 'UNKNOWN'})")
+
+        if order_status in {"APPROVED", "COMPLETED"}:
+            approved = True
+            proof["steps"].append(
+                step(
+                    "buyer approval",
+                    "RECORDED",
+                    paypal_order_id=order_id,
+                    provider_status=order_status,
+                    note="provider already reports this order approved or completed",
+                )
+            )
+        else:
+            if not created.approval_url:
+                print("PayPal returned no approval URL; the proof will stop here.")
+                return 1
             print(f"Approve it here: {created.approval_url}")
             if not args.no_browser:
                 webbrowser.open(created.approval_url)
-        else:
-            print("PayPal returned no approval URL; the proof will stop here.")
-            return 1
-
-        print("Waiting for buyer approval in the sandbox buyer account…")
-        deadline = time.monotonic() + args.wait_seconds
-        approved = False
-        while time.monotonic() < deadline:
-            current = await client.get_order(order_id)
-            if current.status in {"APPROVED", "COMPLETED"}:
-                approved = True
-                proof["steps"].append(
-                    step(
-                        "buyer approval",
-                        "RECORDED",
-                        paypal_order_id=order_id,
-                        status=current.status,
+            print("Waiting for buyer approval in the sandbox buyer account…")
+            deadline = time.monotonic() + args.wait_seconds
+            approved = False
+            while time.monotonic() < deadline:
+                current = await client.get_order(order_id)
+                if current.status in {"APPROVED", "COMPLETED"}:
+                    approved = True
+                    order_status = current.status
+                    proof["steps"].append(
+                        step(
+                            "buyer approval",
+                            "RECORDED",
+                            paypal_order_id=order_id,
+                            provider_status=current.status,
+                        )
                     )
-                )
-                break
-            await asyncio.sleep(3)
+                    break
+                await asyncio.sleep(3)
         if not approved:
             proof["steps"].append(
                 step("buyer approval", "NOT RECORDED", note="timed out waiting for buyer approval")
@@ -414,19 +543,34 @@ async def run(args: argparse.Namespace) -> int:
             print("Buyer approval did not arrive in time. Writing an honest partial proof.")
             return 1
 
-        captured = await service.capture(token, order_id)
-        proof["steps"].append(
-            step(
-                "capture",
-                "RECORDED",
-                paypal_order_id=order_id,
-                capture_id=captured.capture_id,
-                status=captured.status,
-                amount=str(captured.amount),
-                currency=captured.currency,
+        if order_status == "COMPLETED":
+            # Never POST /capture twice. Record the real capture id PayPal already holds,
+            # but say plainly that this run did not perform the capture.
+            already = await client.get_order(order_id)
+            proof["steps"].append(
+                step(
+                    "capture",
+                    "NOT RECORDED",
+                    paypal_order_id=order_id,
+                    capture_id=already.capture_id,
+                    note="order was already COMPLETED before this run; no capture call was made",
+                )
             )
-        )
-        print(f"Captured: {captured.capture_id}")
+            print("Already captured before this run; no second capture was attempted.")
+        else:
+            captured = await service.capture(token, order_id)
+            proof["steps"].append(
+                step(
+                    "capture",
+                    "RECORDED",
+                    paypal_order_id=order_id,
+                    capture_id=captured.capture_id,
+                    provider_status=captured.status,
+                    amount=str(captured.amount),
+                    currency=captured.currency,
+                )
+            )
+            print(f"Captured: {captured.capture_id}")
 
         provider = await client.get_order(order_id)
         proof["steps"].append(
@@ -434,7 +578,7 @@ async def run(args: argparse.Namespace) -> int:
                 "provider order status",
                 "RECORDED",
                 paypal_order_id=provider.order_id,
-                status=provider.status,
+                provider_status=provider.status,
                 capture_id=provider.capture_id,
             )
         )
@@ -444,7 +588,7 @@ async def run(args: argparse.Namespace) -> int:
                 step(
                     "host order status",
                     "RECORDED" if "error" not in local else "NOT RECORDED",
-                    checkout_id=captured.checkout_id,
+                    checkout_id=checkout_id,
                     **(
                         {"error": local["error"]}
                         if "error" in local
@@ -521,7 +665,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="regenerate SANDBOX-PROOF.md from the recorded JSON (no network, no new transaction)",
     )
     parser.add_argument("--env-file", type=Path, default=REPO_ROOT / ".env")
-    parser.add_argument("--amount", default="10.00", help="unit amount of the one-item proof cart")
+    parser.add_argument(
+        "--resume-order",
+        default="",
+        help="finish this existing real sandbox order id instead of creating a new one "
+        "(e.g. an agent-created order whose hosted checkout draft expired); "
+        "--amount/--currency must match the provider's purchase unit exactly",
+    )
+    parser.add_argument(
+        "--amount",
+        default="10.00",
+        help="unit amount of the one-item proof cart; in --resume-order mode it MUST "
+        "equal the amount of the existing PayPal purchase unit",
+    )
     parser.add_argument("--currency", default="USD")
     parser.add_argument("--cap", default="25.00", help="shopper-authorized spend cap")
     parser.add_argument("--ceiling", default="250.00", help="server-side hard spend ceiling")

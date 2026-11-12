@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ACME | PayPal Commerce AI Agent OS</title>
+  <link rel="icon" href="icons/icon32.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-tile" aria-hidden="true">A</span>
+        <span class="brand-word">ACME</span>
+      </div>
+      <div class="brand-sub" title="PayPal Commerce AI Agent Operating System">PayPal Commerce<br>AI Agent OS</div>
+
+      <nav class="views" aria-label="Views">
+        <button type="button" class="view-btn active" data-view="assistant" aria-current="page">
+          <span class="view-icon" data-icon="spark"></span><span>Assistant</span>
+        </button>
+        <button type="button" class="view-btn" data-view="orders">
+          <span class="view-icon" data-icon="box"></span><span>Orders</span>
+          <span id="orders-badge" class="nav-badge" hidden></span>
+        </button>
+      </nav>
+
+      <div class="topbar-right">
+        <button type="button" id="status-pill" class="status-pill" title="Connection status">
+          <span class="status-dot"></span><span id="status-text">Connecting…</span>
+        </button>
+        <button type="button" id="activity-btn" class="pill-btn">
+          Activity <span id="activity-badge" class="count-badge" hidden></span>
+        </button>
+        <button type="button" id="cart-toggle" class="cart-toggle" aria-label="Open cart">
+          <span class="view-icon" data-icon="bag"></span>
+          <span class="cart-toggle-label">Cart</span>
+          <span id="cart-top-count" class="cart-count">0</span>
+        </button>
+        <button type="button" id="account-btn" class="account-btn" title="Profile and memory">
+          <span class="avatar" id="account-avatar">P</span>
+          <span class="account-text">
+            <strong id="account-name">Priya</strong>
+            <small id="account-tier">ACME Subscription member</small>
+          </span>
+        </button>
+        <button type="button" id="settings-btn" class="icon-btn" title="Settings">
+          <span data-icon="settings"></span>
+        </button>
+      </div>
+    </header>
+
+    <div id="connection-banner" class="connection-banner" hidden>
+      <span id="connection-message"></span>
+      <button type="button" id="connection-retry" class="link-btn">Retry</button>
+      <button type="button" id="connection-settings" class="link-btn">Change API address</button>
+    </div>
+
+    <main class="workspace">
+      <section class="content">
+        <div id="assistant-view" class="view">
+          <div id="home" class="home panel-scroll"></div>
+          <div id="transcript" class="transcript panel-scroll" hidden></div>
+
+          <div class="composer-wrap">
+            <div id="suggestions" class="suggestions" hidden></div>
+            <div class="composer">
+              <textarea id="composer-input" rows="1" maxlength="4000"
+                aria-label="Message ACME Assistant"
+                placeholder="Ask about a product, a project, an order…"></textarea>
+              <button type="button" id="voice-btn" class="composer-icon" aria-label="Voice input: speak in English" title="Voice input (English)">
+                <span data-icon="mic"></span>
+              </button>
+              <button type="button" id="send-btn" class="send-btn" aria-label="Send" title="Send">
+                <span data-icon="arrow-up"></span>
+              </button>
+              <button type="button" id="stop-btn" class="send-btn stop-btn" aria-label="Stop generating" title="Stop" hidden>
+                <span data-icon="stop"></span>
+              </button>
+            </div>
+            <div id="composer-hint" class="composer-hint" hidden></div>
+          </div>
+        </div>
+
+        <div id="orders-view" class="view orders-view panel-scroll" hidden></div>
+      </section>
+
+      <aside id="cart-panel" class="cart-panel">
+        <div id="cart-body" class="cart-body panel-scroll"></div>
+        <div id="cart-footer" class="cart-footer"></div>
+      </aside>
+    </main>
+
+    <div id="scrim" class="scrim" hidden></div>
+
+    <aside id="sheet" class="sheet" hidden>
+      <div class="sheet-head">
+        <h2 id="sheet-title">Activity</h2>
+        <button type="button" id="sheet-close" class="icon-btn" aria-label="Close"><span data-icon="close"></span></button>
+      </div>
+      <div id="sheet-body" class="sheet-body panel-scroll"></div>
+    </aside>
+
+    <div id="modal" class="modal" hidden>
+      <div class="modal-card">
+        <button type="button" id="modal-close" class="icon-btn modal-close" aria-label="Close"><span data-icon="close"></span></button>
+        <div id="modal-body" class="modal-body panel-scroll"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

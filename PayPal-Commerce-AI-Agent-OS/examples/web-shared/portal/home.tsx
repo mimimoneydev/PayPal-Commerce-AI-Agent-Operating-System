@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import { describeProposer, describeResolver, formatDayMonth, plural } from "../format";
 import { Icon, type IconName } from "../icons";
 import { AskButton, Button, KindIcon, Panel, Pill, type Tone } from "../ui";
-import { CHANGE_STATUS } from "./cards";
+import { AI_AUTO_APPROVES, CHANGE_STATUS } from "./cards";
 
 /** The question a KPI tile prefills: why the figure moved against the comparison window. */
 export function askWhy(label: string, changePct: number | null | undefined, comparison: string): string {
@@ -24,14 +24,16 @@ export function ratioChangePct(numeratorPct: number | null | undefined, denomina
   return ((1 + numeratorPct / 100) / (1 + denominatorPct / 100) - 1) * 100;
 }
 
-/** Approval itself happens on the change card; this banner hands off to the assistant. */
+/** The change card carries the action; this banner hands off to the assistant. */
 export function ApprovalsBanner({ changes, onReview }: { changes: { change_id: string; summary: string }[]; onReview: () => void }) {
   if (changes.length === 0) return null;
   return (
     <section className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-(--violet)/20 bg-(--violet-soft) px-[18px] py-3">
       <KindIcon icon="edit" tone="violet" size={32} />
       <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-semibold text-(--ink)">{plural(changes.length, "change")} awaiting approval</div>
+        <div className="text-[14px] font-semibold text-(--ink)">
+          {plural(changes.length, "change")} {AI_AUTO_APPROVES ? "held for review" : "awaiting approval"}
+        </div>
         <div className="mt-0.5 truncate text-[12.5px] text-(--ink-soft)">{changes.map((change) => change.summary).join(" · ")}</div>
       </div>
       <Button variant="primary" size="sm" onClick={onReview}>

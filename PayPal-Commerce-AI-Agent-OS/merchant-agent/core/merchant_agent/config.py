@@ -17,6 +17,11 @@ class MerchantAgentConfig(BaseAgentConfig):
     brand_voice: str = "plain and specific, numbers first"
     model: str = "claude-opus-5"
     thinking_effort: ThinkingEffort | None = "low"
+    # A merchant reply carries several presentation payloads plus the prose around them.
+    # The shared 2048 ceiling ends those turns at stop_reason=max_tokens, with the last
+    # component half-written; 4096 leaves room to finish. The demo host also exposes it
+    # as MERCHANT_MAX_TOKENS so a deployment can tighten or widen the budget.
+    max_tokens: int = 4096
 
     # -- The analysis delegate. `analysis_model` None means the main model; the hosted
     # code-execution tool needs the first-party API; with a backend that supports
@@ -75,6 +80,14 @@ class MerchantAgentConfig(BaseAgentConfig):
     require_host_approval: bool = True
     approval_surface: str = "the host application's approval control"
     stage_shows_preview: bool = True
+
+    # -- AI auto-approval. When on (and the human gate is off), a successful stage_*
+    # is applied by the executor in the same turn: the agent approves its own compliant
+    # change, the tool result carries an "AI auto-approved" audit line, and the portal
+    # receives the applied change_update. Guardrails and provenance are still checked;
+    # a held change stays staged. Library default is off; the demo hosts turn it on
+    # unless MERCHANT_REQUIRE_HOST_APPROVAL=1 opts back into human approval.
+    auto_approve_changes: bool = False
 
     # -- Grounding gates (the runtimes read them). Metrics: a performance term plus a
     # question cue forces get_business_snapshot. Follow-through: a change term (or a

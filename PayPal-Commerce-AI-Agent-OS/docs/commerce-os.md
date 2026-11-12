@@ -38,7 +38,7 @@ tenant-scoped services while keeping their interfaces and invariants.
   opaque URL was authored by the host.
 - A checkout is an immutable priced snapshot. Capture must match its PayPal order, amount,
   and currency.
-- A merchant write is staged, guarded, audited, and approved before it reaches a live system.
+- A merchant write is staged, guarded, audited, and approved — by the AI in the demo default, or by a person in human mode — before it reaches a live system.
 - Third-party and business data is fenced before it reaches a model.
 - Every asynchronous provider event is authenticated and processed idempotently.
 - Secrets, funding sources, payer details, and raw credentials are absent from prompts,

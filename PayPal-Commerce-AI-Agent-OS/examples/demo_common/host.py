@@ -61,7 +61,17 @@ def load_demo_env(example_root: Path) -> None:
     """Load credentials before any agent is constructed. A variable already in the
     environment wins; the example's own ``.env`` fills in the rest, then the repo-root
     one; ``COMMERCE_DEMO_AUTH=sdk`` clears key variables instead so the Anthropic SDK's
-    own credential chain is used."""
+    own credential chain is used.
+
+    ``COMMERCE_TESTING=1`` (set by the root pytest conftest) makes this a no-op. The
+    demo hosts call this at *import* time, so without the switch a developer's real
+    ``.env`` would silently reconfigure the whole unit-test suite — enabling PayPal
+    checkout, Channel3 and a live model key — and can even crash collection when a
+    deployment-only variable such as ``COMMERCE_PUBLIC_API_URL`` is absent. Tests must
+    never depend on local credentials.
+    """
+    if os.environ.get("COMMERCE_TESTING", "").strip().lower() in {"1", "true", "yes"}:
+        return
     if os.environ.get("COMMERCE_DEMO_AUTH", "").lower() == "sdk":
         os.environ.pop("ANTHROPIC_API_KEY", None)
         os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
@@ -72,8 +82,55 @@ def load_demo_env(example_root: Path) -> None:
 
 
 def host_approval_default() -> bool:
-    """Merchant portals require host approval unless ``MERCHANT_REQUIRE_HOST_APPROVAL=0``."""
-    return os.environ.get("MERCHANT_REQUIRE_HOST_APPROVAL", "1") != "0"
+    """Human approval is opt-in. The demo merchant portals let the AI auto-approve its
+    own staged changes unless ``MERCHANT_REQUIRE_HOST_APPROVAL=1`` (or ``true``/``yes``)."""
+    return os.environ.get("MERCHANT_REQUIRE_HOST_APPROVAL", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
+def merchant_auto_approve() -> bool:
+    """The host turns AI auto-approval on whenever the human gate is off."""
+    return not host_approval_default()
+
+
+def _bounded_number(name: str, default: float, *, integer: bool) -> float | int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return int(default) if integer else default
+    try:
+        value: float | int = int(raw) if integer else float(raw)
+    except ValueError:
+        logger.warning("%s is not a number; using %s", name, default)
+        return int(default) if integer else default
+    if value <= 0:
+        logger.warning("%s must be positive; using %s", name, default)
+        return int(default) if integer else default
+    return value
+
+
+def merchant_latency_overrides() -> dict[str, Any]:
+    """Budgets for a merchant portal turn, tunable without a code change.
+
+    A merchant turn carries a far larger system prompt and tool list than a shopping
+    turn, and its analysis delegate can make several model calls of its own. Without
+    bounds one question can take 90s; with too small an output budget its multi-component
+    answer ends at ``stop_reason: max_tokens``. These defaults give the answer room to
+    finish while capping the number of round trips and the delegate's wall clock:
+
+    ``MERCHANT_MAX_TOKENS`` (4096), ``MERCHANT_MAX_TOOL_ITERATIONS`` (6),
+    ``MERCHANT_MAX_ANALYSIS_ITERATIONS`` (4), ``MERCHANT_ANALYSIS_TIMEOUT_S`` (60).
+    """
+    return {
+        "max_tokens": _bounded_number("MERCHANT_MAX_TOKENS", 4096, integer=True),
+        "max_tool_iterations": _bounded_number("MERCHANT_MAX_TOOL_ITERATIONS", 6, integer=True),
+        "max_analysis_iterations": _bounded_number(
+            "MERCHANT_MAX_ANALYSIS_ITERATIONS", 4, integer=True
+        ),
+        "analysis_timeout_s": _bounded_number("MERCHANT_ANALYSIS_TIMEOUT_S", 60.0, integer=False),
+    }
 
 
 # The event loop holds only weak references to tasks, so fire-and-forget work (memory

@@ -93,6 +93,23 @@ export class AgentApi {
     return (await this.delete<{ ok: boolean }>("/memory", { key })) !== null;
   }
 
+  /**
+   * A merchant preview-card action. The host issues a one-use capability bound to this
+   * session, change and action, then spends it in the same breath; a bare POST to the
+   * apply/discard route is refused. Returns null when either step was not accepted.
+   */
+  async actOnChange<T>(changeId: string, action: "apply" | "discard"): Promise<T | null> {
+    const grant = await this.post<{ approval: string }>("/approvals", {
+      change_id: changeId,
+      action,
+    });
+    if (!grant?.approval) return null;
+    return this.request<T>(`/changes/${encodeURIComponent(changeId)}/${action}`, {
+      method: "POST",
+      headers: { ...this.headers(), "X-Merchant-Approval": grant.approval },
+    });
+  }
+
   /** The bag as the vertical's API shapes it (lines, count, subtotal, plus its own extras). */
   async fetchCart<T>(): Promise<T | null> {
     return this.get<T>("/cart");

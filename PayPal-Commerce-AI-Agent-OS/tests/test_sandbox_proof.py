@@ -170,6 +170,81 @@ def test_proof_only_without_a_recorded_run_writes_nothing(
     assert "No recorded transaction yet" in capsys.readouterr().out
 
 
+def test_step_calls_never_shadow_the_status_parameter(proof_script) -> None:
+    """A `status=` evidence field raises TypeError on a real run (step's 2nd arg).
+
+    This was a live bug: the create/capture/provider steps all passed `status=` as a
+    keyword, so the first real PayPal run crashed before it could write any proof.
+    """
+    import ast
+
+    offenders = [
+        node.lineno
+        for node in ast.walk(ast.parse(SCRIPT.read_text(encoding="utf-8")))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "step"
+        for kw in node.keywords
+        if kw.arg == "status"
+    ]
+    assert offenders == []
+    built = proof_script.step("capture", "RECORDED", provider_status="COMPLETED")
+    assert built == {
+        "step": "capture",
+        "status": "RECORDED",
+        "provider_status": "COMPLETED",
+    }
+
+
+def test_resume_refuses_a_snapshot_that_reprices_a_real_order(proof_script) -> None:
+    """The agent's pending order is 219.00 USD; a fresh 10.00 quote must not bind to it."""
+    mismatch = proof_script.resume_mismatch
+    assert mismatch("219.00", "USD", "219.00", "USD") is None
+    assert mismatch("219.00", "usd", "219.00", "USD") is None
+    assert "amount mismatch" in mismatch("10.00", "USD", "219.00", "USD")
+    assert "currency mismatch" in mismatch("219.00", "EUR", "219.00", "USD")
+    assert mismatch("219.00", "USD", None, None)
+    assert mismatch("219.00", "USD", None, "USD")
+    assert mismatch("219.00", "USD", "219.00", None)
+    assert "could not be compared" in mismatch("nonsense", "USD", "nonsense", "USD")
+
+
+def test_resume_order_is_opt_in_and_off_by_default(proof_script) -> None:
+    parser = proof_script.build_parser()
+    assert parser.parse_args([]).resume_order == ""
+    args = parser.parse_args(["--resume-order", "94818182GP238811W", "--amount", "219.00"])
+    assert args.resume_order == "94818182GP238811W"
+    assert args.amount == "219.00"
+
+
+def test_resume_refuses_a_cap_below_the_existing_order_amount(
+    proof_script, monkeypatch, capsys
+) -> None:
+    """The default 25.00 cap must not silently reject (or reprice) the 219.00 order."""
+    monkeypatch.setenv("PAYPAL_CLIENT_ID", "fake-id")
+    monkeypatch.setenv("PAYPAL_CLIENT_SECRET", "fake-secret")
+    monkeypatch.setenv("PAYPAL_ENVIRONMENT", "sandbox")
+    args = proof_script.build_parser().parse_args(
+        [
+            "--resume-order",
+            "94818182GP238811W",
+            "--amount",
+            "219.00",
+            "--env-file",
+            str(proof_script.REPO_ROOT / ".env.nonexistent"),
+        ]
+    )
+    assert asyncio.run(proof_script.run(args)) == 2
+    output = capsys.readouterr().out
+    assert "REFUSING resume" in output
+    assert "--cap 219.00" in output
+    assert "no identifiers were invented" in output
+
+
+def test_resume_example_is_documented_in_the_generated_proof(proof_script) -> None:
+    rendered = proof_script.render_proof(empty_proof())
+    assert "--resume-order" in rendered
+    assert "--amount" in rendered
+
+
 def test_live_environment_is_refused(proof_script, monkeypatch, capsys) -> None:
     """Sandbox only: a stray production credential must never start a real order."""
     monkeypatch.setenv("PAYPAL_CLIENT_ID", "fake-id")

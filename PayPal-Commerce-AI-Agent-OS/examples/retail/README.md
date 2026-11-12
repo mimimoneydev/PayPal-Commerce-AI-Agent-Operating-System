@@ -23,8 +23,8 @@ uvicorn retail.api.main:app --app-dir examples --reload --port 8000
 ```
 
 Chat needs `OPENROUTER_API_KEY` in the repo-root `.env` or the environment; browsing the
-catalog and the portal's widgets do not. `MERCHANT_REQUIRE_HOST_APPROVAL=0` lets a chat
-approval apply a change; by default the preview card's button applies it.
+catalog and the portal's widgets do not. The AI auto-approves compliant changes by
+default; set `MERCHANT_REQUIRE_HOST_APPROVAL=1` to require a person's Approve click.
 
 ## Try
 
@@ -34,8 +34,8 @@ Storefront (`scripts/smoke_chat.py --vertical retail` runs the same three turns)
 2. Compare the top two options for me — mostly care about space and ease of setup.
 3. The family one sounds right. Add it to my cart, and remind me what returns look like just in case.
 
-Portal (`scripts/smoke_chat.py --vertical retail --merchant`; the third turn is refused
-until the change is approved on its card, and the last two follow the approval):
+Portal (`scripts/smoke_chat.py --vertical retail --merchant`; AI auto-approval applies
+compliant changes as they are staged — these prompts also replay in human mode):
 
 1. What needs my attention this morning?
 2. Restock the ocean wall decals with enough to cover the next month at the current pace, and fix that listing's description so it covers what's been missing. Show me both before anything goes live.

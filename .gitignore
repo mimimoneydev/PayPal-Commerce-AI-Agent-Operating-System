@@ -9,3 +9,10 @@
 
 # Local-only agent tooling state
 .workbuddy-ai/
+
+# Android client build intermediates. The signed APK and the debug keystore used by
+# build.sh are intentional deliverables; compiler outputs and Gradle caches are not.
+/Android App/.gradle/
+/Android App/build/
+/Android App/app/build/
+/Android App/apk/*.idsig

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#FF1E2C4F</color>
+    <color name="ground">#FFF4F6FA</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="ok">#FF4ADE9B</color>
+    <color name="warn">#FFFFC46B</color>
+    <color name="header_text">#FFE9EDF6</color>
+</resources>

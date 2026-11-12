@@ -27,6 +27,7 @@ from .config import MerchantAgentConfig
 from .enrichment import PRESENTATION_COMPONENTS
 from .fencing import MERCHANT_FENCE
 from .gates import (
+    AUTO_APPROVAL_HELD_NOTE,
     GUARDRAIL_GATE,
     STAGED_AND_SHOWN_NOTE,
     STAGED_NOTE,
@@ -54,6 +55,7 @@ from .serialization import (
 from .tools.presentation import PREVIEW_TOOL
 from .types import (
     CampaignDraft,
+    ChangeStatus,
     InventoryActionItem,
     ListingFilters,
     MerchantSessionContext,
@@ -260,6 +262,26 @@ class MerchantToolExecutor(BaseToolExecutor):
             if not preview.refused:
                 events.extend(preview.events)
                 note = STAGED_AND_SHOWN_NOTE
+        if self._config.auto_approve_changes and not self._config.require_host_approval:
+            # The AI is the approval authority for compliant changes: apply in the same
+            # turn, after the same provenance and guardrail checks a human-gated apply
+            # would run. The audit line travels in the tool result the activity trace
+            # shows. A held change stays staged for the operator to correct.
+            applied = await self._apply_change({"change_id": change.change_id})
+            if applied.is_error or applied.blocked is not None:
+                return self._fenced(
+                    {
+                        "staged": _record(change),
+                        "note": AUTO_APPROVAL_HELD_NOTE,
+                        "reason": applied.result_text,
+                    },
+                    events,
+                )
+            return ToolOutcome(
+                f"AI auto-approved and applied {change.change_id}. {applied.result_text} "
+                "Do not call apply_change again for this change.",
+                applied.events,
+            )
         return self._fenced({"staged": _record(change), "note": note}, events)
 
     async def _stage_listing_update(self, tool_input: dict[str, Any]) -> ToolOutcome:
@@ -345,6 +367,17 @@ class MerchantToolExecutor(BaseToolExecutor):
 
     async def _apply_change(self, tool_input: dict[str, Any]) -> ToolOutcome:
         change_id = str(tool_input.get("change_id", ""))
+        # Under AI auto-approval a stage_* call already applied the change. A model that
+        # still calls apply_change must not hit the backend a second time.
+        if self._config.auto_approve_changes:
+            known = self._state.seen_changes.get(change_id)
+            if known is not None and known.status is not ChangeStatus.STAGED:
+                state = getattr(known.status, "value", known.status)
+                return ToolOutcome(
+                    f"{change_id} is already {state}: AI auto-approval applied it when it "
+                    "was staged. Report that to the operator; do not apply it again.",
+                    [],
+                )
         if held := check_apply_change(self._state, self._config, change_id):
             return held
         try:

@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "ACME Shop — PayPal Commerce AI Agent OS",
+  "short_name": "ACME Shop",
+  "version": "1.0.0",
+  "description": "The complete shop.mimi.money storefront inside Chrome: AI shopping assistant, catalog, cart, orders, memory, voice input and cap-bounded PayPal checkout.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2xENtG/sKwfZQEgB8Xo5qQiSJiRxzuD5iCpk4hIvjYVRGFuavW/Nc7aL775gA8aMsWbkf1w+Hxft11mYcSscdZMnvT09lpWwPPf/MD2YjlLFrH9M+Qpb4JHyMKfleJJ5Xkofu/rmpoYVanVlcOyl5t0LuOjvve0S1zKon5v5YA9YS9EWX9mOD474KJv9Lp3f8Blc9ciHltwsuKP7Yjuw4kqEIH4D2uJgJRPzivHMqXPblbXFZWsIXKKfczOdm9HTBFb6Q7oiRmNZ9da+rwDdEmVCZagYx6ATkTXjZTiCT+ontnwe6GRLPny/Ti9vcV40yhS++YjqTAc6j3nPSKAJ/QIDAQAB",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Open ACME Shop",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://shop.mimi.money/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+A"
+      },
+      "description": "Open ACME Shop"
+    }
+  }
+}

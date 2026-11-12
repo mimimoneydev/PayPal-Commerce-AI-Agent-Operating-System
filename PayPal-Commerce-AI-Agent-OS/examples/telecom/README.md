@@ -23,8 +23,8 @@ uvicorn telecom.api.main:app --app-dir examples --reload --port 8002
 ```
 
 Chat needs `OPENROUTER_API_KEY` in the repo-root `.env` or the environment; browsing the
-catalog and the portal's widgets do not. `MERCHANT_REQUIRE_HOST_APPROVAL=0` lets a chat
-approval apply a change; by default the preview card's button applies it.
+catalog and the portal's widgets do not. The AI auto-approves compliant changes by
+default; set `MERCHANT_REQUIRE_HOST_APPROVAL=1` to require a person's Approve click.
 
 ## Try
 
@@ -34,8 +34,8 @@ Storefront (`scripts/smoke_chat.py --vertical telecom` runs the same three turns
 2. Am I eligible to upgrade my ACME Phone 4 yet? Show me what I could move to, and what the trade-in credit and early-upgrade terms would get me.
 3. Switch me to the Unlimited plan and put it in my cart — and confirm there's no fee for changing plans mid-cycle.
 
-Portal (`scripts/smoke_chat.py --vertical telecom --merchant`; the third turn is refused
-until the change is approved on its card, and the last two follow the approval):
+Portal (`scripts/smoke_chat.py --vertical telecom --merchant`; AI auto-approval applies
+compliant changes as they are staged — these prompts also replay in human mode):
 
 1. Show me churn by plan across the base. Which plan is bleeding, and since when?
 2. Put a retention offer in front of the Essential lines that keep buying top-ups: a month of Plus 15GB at the Essential price if they move up. Stage it as a campaign to that cohort, app push, $1,500. Show me the draft before anything goes out.

@@ -29,6 +29,22 @@ def test_openrouter_models_are_selectable_independently(monkeypatch):
     assert overrides["memory_model"] == "vendor/small-model:free"
 
 
+def test_role_model_overrides_one_role_without_changing_the_other(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
+    monkeypatch.setenv("OPENROUTER_MODEL", "vendor/tool-model:free")
+    monkeypatch.setenv("OPENROUTER_MERCHANT_MODEL", "vendor/fast-model:free")
+    assert model_config_overrides(role="merchant")["model"] == "vendor/fast-model:free"
+    assert model_config_overrides(role="shopping")["model"] == "vendor/tool-model:free"
+    assert model_config_overrides()["model"] == "vendor/tool-model:free"
+    assert model_config_overrides(role="merchant")["memory_model"] == "vendor/fast-model:free"
+
+
+def test_role_model_override_needs_an_openrouter_key(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setenv("OPENROUTER_MERCHANT_MODEL", "vendor/fast-model:free")
+    assert model_config_overrides(role="merchant") == {}
+
+
 async def test_messages_client_uses_openrouter_bearer_auth_and_attribution(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
     monkeypatch.setenv("OPENROUTER_SITE_URL", "https://shop.example")

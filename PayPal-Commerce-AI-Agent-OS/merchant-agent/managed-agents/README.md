@@ -7,6 +7,13 @@ are the repo's; your back-office systems stay behind an MCP server you host, whi
 stages every change and applies one only when the platform's approval prompt has been
 answered. The agent sees what that server returns per call and nothing else.
 
+
+> **Approval mode note.** This Managed Agents runtime keeps the platform's
+> `always_ask` human gate. The hosted demo (`run_demo.py`) is different: it defaults
+> to **AI auto-approval**, where a compliant `stage_*` call applies the change in the
+> same turn. Set `MERCHANT_REQUIRE_HOST_APPROVAL=1` there to require a person's Approve
+> click. The static prompt in `merchant-agent/system.md` belongs to this runtime only.
+
 ```
 your portal  ──user.message──►  hosted agent (agent.yaml: model, system.md, skills)
              ◄──agent.message, agent.custom_tool_use, requires_action──┘   │ MCP over HTTPS, credential from a vault

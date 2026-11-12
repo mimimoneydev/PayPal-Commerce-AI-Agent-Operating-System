@@ -37,6 +37,13 @@ STAGED_AND_SHOWN_NOTE = (
     "Staged, and shown to the operator on its preview card; do not present it again this "
     "turn. Apply it only after the operator approves this change."
 )
+# AI auto-approval mode: a stage_* call already tried to apply the change. These notes
+# are only used when a guardrail held it, so it stays staged for the operator to fix.
+AUTO_APPROVAL_HELD_NOTE = (
+    "AI auto-approval was withheld: this change did not pass the store's guardrails, so it "
+    "stays staged. Report what was held back and propose an alternative; do not call "
+    "apply_change for it."
+)
 
 # Appended once, as a user message, when a change request ends on text with no stage_*
 # attempt.

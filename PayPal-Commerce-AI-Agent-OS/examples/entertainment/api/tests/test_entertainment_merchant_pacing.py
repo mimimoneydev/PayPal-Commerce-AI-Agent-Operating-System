@@ -116,12 +116,15 @@ async def test_release_apply_flow_through_the_executor(
         for event in staged.events
         if event.type == "change_update"
     )
-    assert backend.engine.capacity("AT-TIX-105-BAL") == 260
+    # AI auto-approval is the demo default: a compliant stage_* applies in the same
+    # turn, so the 10-seat release has already landed when staging returns.
+    assert backend.engine.capacity("AT-TIX-105-BAL") == 270
 
     applied = await merchant_executor.execute("apply_change", {"change_id": change_id})
-    assert not applied.is_error
+    assert not applied.is_error and applied.blocked is None
+    assert "already" in applied.result_text
     assert backend.engine.capacity("AT-TIX-105-BAL") == 270
-    assert backend.engine.remaining("AT-TIX-105-BAL") == 260 - 97 + 10
+    assert backend.engine.remaining("AT-TIX-105-BAL") == 270 - 97
 
     # The balcony's promoter hold was 20 before the 10-seat release.
     panel = await merchant_executor.execute("present_event_pacing", {"event_ids": ["AT-EVT-105"]})
@@ -135,6 +138,9 @@ async def test_release_apply_flow_through_the_executor(
     assert balcony["remaining"] == 173
     assert balcony["holds"] == {"promoter_hold": 10, "production_hold": 0, "comps": 6, "kills": 0}
 
+    # AI auto-approval applied this change at stage time. A second apply is a safe
+    # no-op with a friendly note, not a tool error and not a second backend write.
     again = await merchant_executor.execute("apply_change", {"change_id": change_id})
-    assert again.is_error
-    assert "applied" in again.result_text
+    assert not again.is_error and again.blocked is None
+    assert "already" in again.result_text and "applied" in again.result_text
+    assert not again.events

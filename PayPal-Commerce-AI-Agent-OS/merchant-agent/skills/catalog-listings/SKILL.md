@@ -7,7 +7,7 @@ description: Creating and improving listing content, covering titles, descriptio
 
 Below, "listing" means whatever this operation sells: a product, a room type, a plan or device, or an event tier.
 
-Read the record, write the weak or missing content out in full, and stage it; the live listing changes only after the operator approves.
+Read the record, write the weak or missing content out in full, and stage it; a compliant change is AI auto-approved and goes live in the same turn.
 
 ## Where each fact comes from
 

@@ -187,8 +187,13 @@ class PayPalOrder(BaseModel):
     status: str
     approval_url: str | None = None
     capture_id: str | None = None
+    # ``amount``/``currency`` describe a CAPTURE. ``purchase_amount``/``purchase_currency``
+    # describe the order's own purchase unit, available even before a buyer approves it;
+    # the sandbox proof's resume mode uses them to refuse a mismatched local snapshot.
     amount: Decimal | None = None
     currency: str | None = None
+    purchase_amount: Decimal | None = None
+    purchase_currency: str | None = None
 
 
 class PayPalConfig(BaseModel):
@@ -625,6 +630,8 @@ class PayPalClient:
         )
         capture = captures[0] if captures and isinstance(captures[0], dict) else {}
         amount = (capture.get("amount") or {}).get("value")
+        purchase = units[0].get("amount") or {} if units and isinstance(units[0], dict) else {}
+        purchase_amount = purchase.get("value")
         return PayPalOrder(
             order_id=str(data.get("id", order_id)),
             status=str(data.get("status", "")),
@@ -632,6 +639,8 @@ class PayPalClient:
             capture_id=str(capture["id"]) if capture.get("id") else None,
             amount=money(amount) if amount else None,
             currency=(capture.get("amount") or {}).get("currency_code"),
+            purchase_amount=money(purchase_amount) if purchase_amount else None,
+            purchase_currency=purchase.get("currency_code"),
         )
 
     async def verify_webhook(self, headers: Mapping[str, str], event: Mapping[str, Any]) -> bool:

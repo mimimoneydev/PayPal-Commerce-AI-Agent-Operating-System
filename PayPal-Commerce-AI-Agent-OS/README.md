@@ -14,7 +14,8 @@ runs through compatible Messages API, Agent SDK, and Managed Agent runtimes.
 > cap-bounded PayPal Orders v2 order: the host reads its own prices, enforces the shopper's
 > spend limit and its own ceiling, freezes an immutable cart snapshot, and creates the order
 > with server-held credentials. The customer still approves on PayPal's page and the host
-> captures it. Every merchant write is staged until a person approves it. Business rules,
+> captures it. Merchant writes pass provenance and guardrail checks and are **AI
+> auto-approved** in the same turn; a human gate is opt-in. Business rules,
 > authorization, fulfillment, and compliance are the deployment's.
 
 For the case for this project (who benefits and why the payment step is the hard part), see
@@ -44,11 +45,19 @@ The hackathon build also includes four optional sponsor integrations: Channel3 a
 retail discovery when `CHANNEL3_API_KEY` is set; AG Studio adds a self-service retail
 analytics workspace; Bryntum adds a read-only travel occupancy and rate scheduler; and
 APIMatic-ready OpenAPI contracts are generated with `python scripts/export_openapi.py`.
-Setup, boundaries, and verification are documented in [`docs/sponsor-integrations.md`](docs/sponsor-integrations.md).
+[Sponsor tools in the Agent OS](#sponsor-tools-in-the-agent-os) shows exactly where each one
+runs, with links to the implementation; setup, boundaries, and verification are documented in
+[`docs/sponsor-integrations.md`](docs/sponsor-integrations.md).
 
 `--merchant` starts the portal instead of the storefront and `--all` starts both. The
 verticals are `retail` (:3000, portal :3100), `travel` (:3001, :3101), `telecom` (:3002,
 :3102), and `entertainment` (:3003, :3103); each README lists prompts to try on both surfaces.
+
+Both web surfaces share one chat composer, so voice input works everywhere: press the
+microphone, speak in English, and the browser's Web Speech API places the words in the text
+field. Nothing is sent until you press Enter or **Send**. No API key or extra dependency is
+required; Chrome, Edge and Safari are supported, and other browsers show a disabled
+microphone with an explanation.
 
 ## Quick start: build your own
 
@@ -76,10 +85,22 @@ questions, and remembers what a customer tells it. Its five flows are the skills
 cart, order, and policy systems.
 
 The **merchant agent** explains performance, maintains listings, acts on inventory and order
-alerts, prices and promotes, and drafts campaigns; every write is a staged change the host's
-approval surface applies. Its five flows are the skills in [`merchant-agent/skills/`](merchant-agent/skills/);
+alerts, prices and promotes, and drafts campaigns; every write is provenance- and
+guardrail-checked, then **AI auto-approved** in the same turn. Set
+`MERCHANT_REQUIRE_HOST_APPROVAL=1` to require a person's Approve click instead. Its five flows are the skills in [`merchant-agent/skills/`](merchant-agent/skills/);
 a deployment implements [`MerchantBackend`](merchant-agent/core/merchant_agent/backend.py) over
 its analytics, catalog, inventory, pricing, and campaign systems.
+
+## Approval modes
+
+**AI auto-approval is the demo default.** A compliant `stage_*` call runs provenance and
+guardrail checks in `MerchantToolExecutor` and applies the change in the same turn; the tool
+result and the activity trace carry an `AI auto-approved` audit line. A guardrail-held change
+stays staged on its preview card. Set `MERCHANT_REQUIRE_HOST_APPROVAL=1` to restore the human
+gate (`require_host_approval`), where the preview card's **Approve** button is the only way to
+apply a change; the portal copy follows `NEXT_PUBLIC_MERCHANT_AUTO_APPROVE=0`. Both modes keep
+provenance gates, guardrails, the change ledger and the two-step approval capability on the
+host's apply/discard routes. See [`docs/safety.md`](docs/safety.md).
 
 ## Layout
 
@@ -124,7 +145,7 @@ prefetches grounding reads, and nothing runs after the turn:
 
 ```bash
 python shopping-agent/runtime-agent-sdk/main.py --once "a two-person tent under $250"
-python merchant-agent/runtime-agent-sdk/main.py          # approves staged changes with y/N
+python merchant-agent/runtime-agent-sdk/main.py          # SDK console: y/N approval (separate runtime)
 ```
 
 **Managed Agents.** A hosted agent over the same skills and contracts, calling your MCP server:
@@ -150,16 +171,179 @@ who names the items and a maximum total gets a real sandbox order prepared withi
 `scripts/run_demo.py` enables sandbox checkout by default whenever credentials are present and
 warns loudly when they are missing; `--no-paypal` is the explicit offline switch.
 `scripts/demo_paypal_order.py` records a real `create → approve → capture → webhook → status`
-run, and [`SANDBOX-PROOF.md`](SANDBOX-PROOF.md) is the honest record of what has actually been
-recorded. See [`docs/payments.md`](docs/payments.md).
+run; its `--resume-order` mode finishes an order the agent already created whose hosted
+checkout draft has expired. [`SANDBOX-PROOF.md`](SANDBOX-PROOF.md) is the honest record of
+what has actually been recorded — currently one real sandbox order awaiting buyer approval,
+with every later step still `NOT RECORDED`. See [`docs/payments.md`](docs/payments.md).
+
+## Sponsor tools in the Agent OS
+
+The [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/resources) lists AG Grid,
+APIMatic, Bryntum and Channel3 as optional "Select Sponsor Tools". All four are wired into this
+repository as working integrations. They are **additive**: with no sponsor credentials the
+storefronts, merchant tools, checkout and approval workflow keep running on the built-in ACME
+data. Only the PayPal sandbox plus an AI model are required by the
+[Official Rules](https://paypalaihackathon.devpost.com/rules); a sponsor tool instead makes a
+submission eligible for the separate "Best Use of …" prizes.
+
+```mermaid
+flowchart LR
+  subgraph RETAIL["Retail :8000 / :3100"]
+    API["Retail FastAPI host"]
+    C3["Channel3 /v1/search"]
+    API -->|"x-api-key, server-side"| C3
+    API -.->|"fallback"| CAT["Built-in ACME catalog"]
+    MW["Merchant web / Analytics"]
+    AGS["AG Studio, browser-local data"]
+    MW --> AGS
+  end
+  subgraph TRAVEL["Travel :8001 / :3101"]
+    TW["Merchant web / Schedule"]
+    BRY["Bryntum Scheduler, read-only"]
+    TW --> BRY
+  end
+  subgraph BUILDTIME["Build time only"]
+    EXP["scripts/export_openapi.py"]
+    SPEC["integrations/apimatic/.../openapi.json"]
+    APM["APIMatic CLI validate / SDK"]
+    EXP --> SPEC --> APM
+  end
+```
+
+| Tool | Runs in | Surface | Credential |
+|---|---|---|---|
+| **Channel3** | Python host (server-side) | Retail storefront search; `ch3:` products | `CHANNEL3_API_KEY` — the only real API key |
+| **AG Grid / AG Studio** | Browser (merchant web) | Retail **Analytics studio**, `:3100` | Optional `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` |
+| **Bryntum Scheduler** | Browser (merchant web) | Travel **Revenue schedule**, `:3101` | None — keyless npm trial alias |
+| **APIMatic** | Build / CI only | Generated OpenAPI contracts and SDKs | None — CLI login is optional |
+
+### Channel3 — live product discovery
+
+[`examples/retail/api/channel3_catalog.py`](examples/retail/api/channel3_catalog.py) adapts
+Channel3 to the `StorefrontBackend` catalog contract;
+[`examples/retail/api/mock_retail.py`](examples/retail/api/mock_retail.py) calls it on every
+shopper search:
+
+```python
+# examples/retail/api/channel3_catalog.py
+headers = {
+    "x-api-key": self.api_key,
+    "x-user-id": self._partner_user(session),   # SHA-256 of the session user id
+    "Accept": "application/json",
+}
+```
+
+- `Channel3Catalog.from_env()` returns `None` when `CHANNEL3_API_KEY` is empty, so the adapter
+  is inert by default. It calls `/v1/search` and `/v1/products/{id}` on `CHANNEL3_BASE_URL`
+  (default `https://api.trychannel3.com`) with a bounded timeout and result count.
+- Results are normalized into the same `ProductDetails` contract, namespaced with `ch3:` so
+  they cannot collide with local SKUs, and cached for detail lookups. The key never reaches
+  the browser or the model.
+- Any failure, timeout or malformed response falls back to the local catalog; `GET /api/health`
+  reports `integrations.channel3.enabled` and `cached_products`. Merchant tools deliberately
+  stay on the authoritative local catalog. A production deployment must re-fetch the
+  authoritative offer and revalidate price, availability, seller, tax and fulfillment before
+  creating a PayPal order.
+- Hackathon keys include 20,000 free credits with promo code `PAYPAL-HACKATHON-2026` at
+  [trychannel3.com/developers](https://trychannel3.com/developers). The sponsor rules require
+  an actual API call — a project that only references Channel3 does not qualify.
+
+### AG Grid / AG Studio — merchant analytics
+
+[`AnalyticsView.tsx`](examples/retail/merchant-web/components/views/AnalyticsView.tsx) builds
+six governed, browser-local data sources from merchant API responses — performance trends,
+catalog, inventory alerts, order issues, recent orders and change history — and hands them to
+AG Studio in
+[`AgStudioWorkspace.tsx`](examples/retail/merchant-web/components/analytics/AgStudioWorkspace.tsx):
+
+```tsx
+const studio = <AgStudio data={{ sources }} mode="edit" />;
+const licenseKey = process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY;
+return licenseKey ? <AgStudioProvider licenseKey={licenseKey}>{studio}</AgStudioProvider> : studio;
+```
+
+The dependency is `ag-studio-react` ^3.1.0, AG Grid's embedded analytics product; the
+`ag-grid-*` packages in the lockfile are transitive. Operators build grids, KPI tiles, charts,
+filters and cross-filtered reports without changing the agent backend. Only merchant API
+responses enter the dashboard — no server key or payment credential. A free 45-day AG Studio
+trial licence is optional; without one Studio runs in trial mode.
+
+### Bryntum — travel revenue schedule
+
+[`ScheduleView.tsx`](examples/travel/merchant-web/components/views/ScheduleView.tsx) feeds
+`fetchOccupancy()` into
+[`BryntumOccupancyScheduler.tsx`](examples/travel/merchant-web/components/schedule/BryntumOccupancyScheduler.tsx),
+which renders properties as resources and weekly occupancy/rate windows as events.
+Agent-staged overrides are orange, and the scheduler is `readOnly` by design: pricing changes
+still go through the merchant agent's stage → guardrail check → AI auto-apply sequence.
+
+```json
+"@bryntum/scheduler": "npm:@bryntum/scheduler-trial@^7.3.8"
+```
+
+That public npm **trial alias** needs no licence key for the 45-day hackathon trial.
+`BRYNTUM_LICENSE_KEY` and `NEXT_PUBLIC_BRYNTUM_LICENSE_KEY` in `.env.example` are reserved
+placeholders — no source file reads them. Replace the alias with the licensed package source
+before a production distribution.
+
+### APIMatic — API contracts, SDKs and docs
+
+[`scripts/export_openapi.py`](scripts/export_openapi.py) loads each real FastAPI app and writes
+its OpenAPI schema into APIMatic's `src/spec` layout at
+`integrations/apimatic/<vertical>/src/spec/openapi.json`. The contracts cover the storefront
+and merchant routes, including PayPal create, capture, status and webhook endpoints.
+
+```bash
+python scripts/export_openapi.py
+npx -y @apimatic/cli@2.1.0 api validate --file integrations/apimatic/retail/src/spec/openapi.json
+npx -y @apimatic/cli@2.1.0 sdk generate --input integrations/apimatic/retail \
+  --language typescript --destination build/apimatic/retail-typescript --force
+```
+
+Generated clients are consumers only: all authorization, pricing, provenance, PayPal capture
+and merchant approval checks stay server-side. There is **no runtime API key**;
+`apimatic auth login` is a developer-tool account for generating your own SDK or portal. See
+[`integrations/apimatic/README.md`](integrations/apimatic/README.md).
+
+### Credentials and where to put them
+
+| Variable | File | Needed? |
+|---|---|---|
+| `CHANNEL3_API_KEY`, `CHANNEL3_BASE_URL`, `CHANNEL3_MAX_RESULTS`, `CHANNEL3_TIMEOUT_SECONDS` | `.env` at the repo root | **Yes**, to actually call Channel3 |
+| `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` | `examples/retail/merchant-web/.env.local` or exported in the shell | Optional trial / licence key |
+| `BRYNTUM_LICENSE_KEY`, `NEXT_PUBLIC_BRYNTUM_LICENSE_KEY` | `.env` | No — unused placeholders |
+| — (APIMatic) | — | No |
+
+Copy [`.env.example`](.env.example) to `.env`; both `.env` and `.env.local` are gitignored. The
+Python host loads process env → `examples/<vertical>/.env` → repo-root `.env` with
+`override=False`. `scripts/run_demo.py` forwards only `NEXT_PUBLIC_COMMERCE_PLATFORM` from the
+root `.env` into Next.js, so the AG Studio key must be exported in the shell or placed in the
+merchant web app's `.env.local`. Per the Official Rules' Testing section, judges need any test
+credentials or sandbox logins documented in the submission's testing instructions — never
+commit real keys.
+
+### Verify the integrations
+
+```bash
+pytest examples/retail/api/tests/test_channel3_catalog.py -q   # adapter, mapping, fallback
+python scripts/export_openapi.py --vertical retail               # APIMatic contract
+python scripts/run_demo.py retail --merchant                    # :3100 → Analytics studio
+python scripts/run_demo.py travel --merchant                    # :3101 → Revenue schedule
+```
+
+Full boundaries, failure handling and production notes are in
+[`docs/sponsor-integrations.md`](docs/sponsor-integrations.md).
 
 ## Safety
 
-Fencing, provenance gates, caps, memory validation, and the merchant approval gate run
-inside the tool call and hold on all three paths; grounding, the analysis budgets, and memory
+Fencing, provenance gates, caps, memory validation, and the merchant guardrails run
+inside the tool call and hold on all three paths; AI auto-approval is the demo default and a
+human gate is opt-in; grounding, the analysis budgets, and memory
 extraction are runtime features. [`docs/safety.md`](docs/safety.md) lists each rule with its
-module and paths, and what a deployment adds first; the examples have no authentication and
-the MCP servers bind to loopback.
+module and paths, and what a deployment adds first. The examples have no operator login, but
+the preview card apply/discard routes still require a short-lived, single-use,
+session-bound approval capability (and optionally an injected operator token); the MCP
+servers bind to loopback.
 
 ## PayPal Commerce AI Agent OS
 
@@ -168,7 +352,8 @@ boundaries, and build-out sequence. [`docs/payments.md`](docs/payments.md) docum
 PayPal checkout that is on by default: OAuth, Orders v2 create/capture, opaque checkout tokens,
 SQLite/Postgres payment state, webhook verification, the cap-bounded auto-buy tool, and the
 requirements that remain before a live launch. [`SANDBOX-PROOF.md`](SANDBOX-PROOF.md) records
-the real sandbox transaction run.
+the real sandbox evidence gathered so far, including the pending order still awaiting buyer
+approval.
 
 ## Verticals
 

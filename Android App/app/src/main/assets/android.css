@@ -1,0 +1,44 @@
+/* Android-specific tweaks. The native header provides branding and the live/offline
+ * indicator, so the web app's duplicate brand block and status pill are hidden and the
+ * remaining nav/actions get the full width on a phone. */
+
+html.android .brand,
+html.android .brand-sub,
+html.android .status-pill { display: none; }
+
+html.android .topbar { padding-left: 8px; padding-right: 8px; gap: 6px; }
+html.android .topbar-right { gap: 5px; }
+html.android .view-btn { padding: 6px 7px; gap: 5px; font-size: 13px; }
+html.android .view-btn span:not(.view-icon):not(.nav-badge) { display: none; }
+html.android .view-btn .view-icon { display: inline-flex; }
+html.android .account-text { display: none; }
+
+html.android .home,
+html.android .transcript,
+html.android .orders-view { padding-top: 16px; }
+
+html.android .home { padding-bottom: 16px; }
+html.android .composer-wrap { padding-bottom: 10px; }
+html.android .suggestions { padding-bottom: 6px; }
+html.android .cart-panel { top: 58px; }
+
+/* Touch targets */
+html.android .ask-btn,
+html.android .add-btn,
+html.android .chip,
+html.android .icon-btn,
+html.android .composer-icon,
+html.android .send-btn { min-height: 34px; }
+
+html.android .starter { min-height: 58px; }
+html.android .product-tile .tile-image { height: 96px; }
+html.android .product-grid { gap: 8px; }
+
+/* A single carousel item should not leave a wide empty strip on a phone. */
+html.android .prod-scroll .prod-item { flex: 0 0 min(280px, 78vw); }
+html.android .prod-scroll .prod-item:only-child { flex: 1 1 100%; }
+html.android .prod-card .tile-image { height: 150px; }
+html.android .prod-item .add-btn { margin-top: 8px; }
+
+/* Keep the composer clear of the Android navigation bar */
+html.android .app { padding-bottom: 0; }

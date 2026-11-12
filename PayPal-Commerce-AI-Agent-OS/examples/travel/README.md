@@ -22,8 +22,8 @@ uvicorn travel.api.main:app --app-dir examples --reload --port 8001
 ```
 
 Chat needs `OPENROUTER_API_KEY` in the repo-root `.env` or the environment; browsing the
-catalog and the portal's widgets do not. `MERCHANT_REQUIRE_HOST_APPROVAL=0` lets a chat
-approval apply a change; by default the preview card's button applies it.
+catalog and the portal's widgets do not. The AI auto-approves compliant changes by
+default; set `MERCHANT_REQUIRE_HOST_APPROVAL=1` to require a person's Approve click.
 
 ## Try
 
@@ -33,8 +33,8 @@ Storefront (`scripts/smoke_chat.py --vertical travel` runs the same three turns)
 2. Compare the stay you picked against a refundable alternative — what's the price difference for flexibility?
 3. Add the refundable stay to my trip, and what does ACME Travel's cancellation window look like for it?
 
-Portal (`scripts/smoke_chat.py --vertical travel --merchant`; the third turn is refused
-until the change is approved on its card, and the last two follow the approval):
+Portal (`scripts/smoke_chat.py --vertical travel --merchant`; AI auto-approval applies
+compliant changes as they are staged — these prompts also replay in human mode):
 
 1. Home says two stays are pacing soft. Which two, how does their October look on the calendar, and where should rates move?
 2. Ease the midweek rates by about ten percent on the two softest properties, but only for their soft October weeks. The rest of the calendar stays where it is. Show me the impact before anything goes live.

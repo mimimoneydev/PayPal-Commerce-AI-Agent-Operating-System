@@ -137,15 +137,23 @@ real signed webhook with `service.process_webhook()`, and writes
 ```bash
 python scripts/demo_paypal_order.py --check       # config only, no network
 python scripts/demo_paypal_order.py               # real sandbox order
+python scripts/demo_paypal_order.py --resume-order <REAL-ORDER-ID> \
+    --amount <that order's amount> --currency <that order's currency> \
+    --cap <that order's authorized cap>
 python scripts/demo_paypal_order.py --proof-only  # rebuild the markdown from recorded files
 ```
+
+`--resume-order` finishes an order the agent already created whose hosted checkout draft has
+expired. It reads the provider's purchase unit, refuses to bind a local snapshot with a
+different amount or currency, creates no duplicate order, and never POSTs `/capture` twice.
 
 The script refuses `PAYPAL_ENVIRONMENT=live`, never invents an order id, capture id, webhook
 event, screenshot or credential, and writes `NOT RECORDED` for any step that did not
 actually happen. Screenshots belong in `proof/screenshots/`. The checked-in
-`SANDBOX-PROOF.md` is the honest pre-run state until a run with real credentials completes;
-it also carries the checklist for judge sandbox credentials, which must be supplied by the
-submitter in the Devpost testing instructions, never committed to this repository.
+`SANDBOX-PROOF.md` is the honest partial state: one real sandbox order awaiting buyer
+approval, with every later step still unrecorded. It also carries the checklist for judge
+sandbox credentials, which must be supplied by the submitter in the Devpost testing
+instructions, never committed to this repository.
 
 ## Webhooks
 

@@ -38,7 +38,7 @@ or payment credentials enter the dashboard.
 The travel portal has a **Schedule** view using Bryntum Scheduler. Properties are resources;
 weekly occupancy/rates are events; agent-staged overrides are orange. The scheduler is
 read-only by design: pricing changes still go through the merchant agent's stage, preview,
-human approval, and apply sequence.
+AI auto-approval, and apply sequence.
 
 The dependency uses Bryntum's npm trial alias for hackathon development. Replace it with the
 licensed package source before production distribution.

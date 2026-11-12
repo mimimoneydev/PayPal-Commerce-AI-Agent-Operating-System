@@ -107,6 +107,9 @@ async def test_promotion_apply_flow_through_the_executor(
     weeks = ui.data["payload"]["listings"][0]["weeks"]
     assert all(week["override"]["change_id"] == change_id for week in weeks)
 
+    # AI auto-approval applied this change at stage time. A second apply is a safe
+    # no-op with a friendly note, not a tool error and not a second backend write.
     again = await merchant_executor.execute("apply_change", {"change_id": change_id})
-    assert again.is_error
-    assert "applied" in again.result_text
+    assert not again.is_error and again.blocked is None
+    assert "already" in again.result_text and "applied" in again.result_text
+    assert not again.events

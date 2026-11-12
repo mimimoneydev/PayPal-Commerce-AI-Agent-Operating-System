@@ -83,9 +83,7 @@ export function useMerchantChat<TChange extends ChangeRef>(
 
   const actOnChange = useCallback(
     async (changeId: string, action: ChangeAction) => {
-      const data = await api.post<{ change: TChange | null }>(
-        `/changes/${encodeURIComponent(changeId)}/${action}`,
-      );
+      const data = await api.actOnChange<{ change: TChange | null }>(changeId, action);
       const change = data?.change ?? null;
       if (change) {
         onPortalRefresh();

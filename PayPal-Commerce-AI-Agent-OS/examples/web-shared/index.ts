@@ -23,6 +23,7 @@ export type * from "./protocol";
 export { QuotedAsData } from "./QuotedAsData";
 export { useResource } from "./resource";
 export { type Session, useSession } from "./session";
+export { useVoiceInput } from "./speech";
 export { AskLink, BagPanel, CheckoutButton, RemoveLink, Stepper, TotalRow } from "./storefront/bag";
 export { Chat } from "./storefront/Chat";
 export { useStoreFrame } from "./storefront/frame";

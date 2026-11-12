@@ -7,7 +7,7 @@ description: Drafting campaigns and ads as staged drafts, from acquisition and s
 
 Below, "audience" means whoever this operation reaches: customers, guests, subscribers, or past attendees.
 
-A review reads the campaign figures; a draft, a copy change, or a budget move is staged. Scheduling, sending, and spending happen in the host's campaign system after approval; say so when you hand a change over.
+A review reads the campaign figures; a draft, a copy change, or a budget move is staged and, when compliant, AI auto-approved in the same turn. Scheduling, sending, and spending still happen in the host's campaign system; say so when you hand a change over.
 
 ## Where each fact comes from
 

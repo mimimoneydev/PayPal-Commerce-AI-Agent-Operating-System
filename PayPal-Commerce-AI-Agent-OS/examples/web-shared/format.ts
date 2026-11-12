@@ -207,14 +207,14 @@ export function describeProposer(change: {
     : `Staged by ${change.created_by}`;
 }
 
-/** Approvals are always a person. */
+/** Resolver text is actor-neutral: the host may apply through AI auto-approval. */
 export function describeResolver(change: {
   status: string;
   applied_by?: string | null;
   discarded_by?: string | null;
   discarded_by_kind?: "operator" | "agent" | null;
 }): string | null {
-  if (change.status === "applied" && change.applied_by) return `Approved by ${change.applied_by}`;
+  if (change.status === "applied" && change.applied_by) return `Applied by ${change.applied_by}`;
   if (change.status === "discarded" && change.discarded_by) {
     return change.discarded_by_kind === "agent"
       ? `Dismissed by ${change.discarded_by}'s assistant`

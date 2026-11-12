@@ -786,3 +786,29 @@ async def test_starting_event_precedes_the_delegate_run(backend, config, skills,
     await executor.execute("probe", {})
     assert timeline[0] == ("progress", "starting")
     assert "run" in timeline
+
+
+async def test_ai_auto_approval_applies_on_stage_and_never_applies_twice(
+    backend, config, skills, session, state
+):
+    """The demo default: a compliant stage_* call is applied by the AI in the same turn.
+    Guardrails and provenance still run, and a later apply_change is a no-op."""
+    from merchant_agent import ChangeStatus
+
+    auto_config = config.model_copy(
+        update={"auto_approve_changes": True, "require_host_approval": False}
+    )
+    auto = MerchantToolExecutor(
+        backend=backend, config=auto_config, skills=skills, session=session, state=state
+    )
+    staged = await auto.execute("stage_campaign", {"name": "Spring refresh", "budget": 300})
+    assert not staged.is_error and staged.blocked is None
+    assert "AI auto-approved" in staged.result_text
+
+    change = next(iter(state.seen_changes.values()))
+    assert change.status is ChangeStatus.APPLIED
+    assert any(event.type == "change_update" for event in staged.events)
+
+    again = await auto.execute("apply_change", {"change_id": change.change_id})
+    assert "already" in again.result_text and "auto-approval" in again.result_text
+    assert not again.is_error

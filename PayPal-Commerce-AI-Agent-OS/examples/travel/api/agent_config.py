@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from commerce_common.model_provider import model_config_overrides
-from demo_common import host_approval_default
+from demo_common import host_approval_default, merchant_auto_approve, merchant_latency_overrides
 from merchant_agent import MerchantAgentConfig
 from shopping_agent import ShoppingAgentConfig
 
@@ -36,7 +36,7 @@ def build_shopping_config() -> ShoppingAgentConfig:
             "every search — results and prices are quotes for those dates, not "
             "catalog constants."
         ),
-        **model_config_overrides(),
+        **model_config_overrides(role="shopping"),
     )
 
 
@@ -44,6 +44,7 @@ def build_merchant_config(store_name: str) -> MerchantAgentConfig:
     return MerchantAgentConfig(
         brand_name=store_name,
         require_host_approval=host_approval_default(),
+        auto_approve_changes=merchant_auto_approve(),
         approval_surface="the Approve button on the change preview card",
         metrics_intent_terms=_MERCHANT_DEFAULTS.metrics_intent_terms + _METRICS_TERMS,
         # Stays price under nightly_rate, so the price-delta caps follow that field and a
@@ -51,5 +52,6 @@ def build_merchant_config(store_name: str) -> MerchantAgentConfig:
         price_bearing_fields=_MERCHANT_DEFAULTS.price_bearing_fields + ("nightly_rate",),
         listing_update_blocked_fields=_MERCHANT_DEFAULTS.listing_update_blocked_fields
         + ("nightly_rate",),
-        **model_config_overrides(),
+        **model_config_overrides(role="merchant"),
+        **merchant_latency_overrides(),
     )

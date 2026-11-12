@@ -7,7 +7,7 @@ description: Stock, capacity, and availability monitoring, acting on low-stock a
 
 Below, "stock" means whatever the alerts count (units, room-nights, active lines, or seats in a tier) and "issue" means whatever the issue feed reports (an order, a guest, a provisioning run, or a transfer).
 
-Tell the operator what needs a decision today and give them the numbers to make each one. Every write here is a staged change.
+Tell the operator what needs a decision today and give them the numbers to make each one. Every write here is a staged change, AI auto-approved in the same turn when it passes the guardrails.
 
 ## The daily briefing
 

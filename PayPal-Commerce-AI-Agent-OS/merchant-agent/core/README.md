@@ -10,7 +10,7 @@ variants and what to return for a figure the platform cannot supply.
 |---|---|
 | `types.py` | Listings (a family's `options`, its `variants` with `option_values` and `variant_of`), snapshots and series (a figure the store cannot supply is `None` with a `note`), `DataLimitation`, alerts, issues, pricing context, campaigns, drafts, `StagedChange`, `MerchantSessionContext`, `MerchantSessionState` |
 | `backend.py` | `MerchantBackend`: 8 reads, 5 `stage_*` methods, and `get_pending_changes`, `apply_change`, `discard_change`; optional `execute_analysis_query`, `get_analysis_schema`, `get_merchant_context` |
-| `config.py` | `MerchantAgentConfig`: analysis settings and budgets, the `enable_*` system switches, guardrail limits, approval, `stage_shows_preview`, grounding lexicons |
+| `config.py` | `MerchantAgentConfig`: analysis settings and budgets, the `enable_*` system switches, guardrail limits, approval modes (human / AI auto-approval), `stage_shows_preview`, grounding lexicons |
 | `prompt.py` | `build_static_system` (cached) and `build_dynamic_context` (fenced, per request) |
 | `tools/registry.py` | The tool contracts, in a fixed order; `run_analysis` is added when `enable_analysis` is set |
 | `tools/presentation.py` | Payload schemas for the three built-in presentation tools (chips are in `commerce_common`) |

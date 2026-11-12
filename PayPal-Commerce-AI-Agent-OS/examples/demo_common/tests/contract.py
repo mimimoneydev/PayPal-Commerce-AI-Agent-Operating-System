@@ -23,7 +23,12 @@ from demo_common import (
     build_merchant_router,
 )
 from demo_common.storefront_fixtures import load_catalog, load_json
-from demo_common.tests.fixtures import showcase_products, start_operator, start_shopper
+from demo_common.tests.fixtures import (
+    approve,
+    showcase_products,
+    start_operator,
+    start_shopper,
+)
 from merchant_agent import (
     ActorKind,
     CampaignDraft,
@@ -351,7 +356,10 @@ def test_ids_containing_slashes_reach_the_id_routes(client, main):
     assert listing.status_code == 404 and listing.json()["detail"] == "Listing not found"
     product = client.get(f"/api/products/{weird}")
     assert product.status_code == 404 and product.json()["detail"] == "Product not found"
-    applied = client.post(f"/api/merchant/changes/{weird}/apply", headers=headers)
+    applied = client.post(
+        f"/api/merchant/changes/{weird}/apply",
+        headers=approve(client, headers, weird, "apply"),
+    )
     assert applied.status_code == 200 and weird in applied.json()["reason"]
 
 
@@ -393,12 +401,18 @@ def test_preview_card_buttons_report_a_hold_apart_from_an_apply(
     def stored():
         return sessions.require(headers[SESSION_HEADER])
 
-    held = client.post("/api/merchant/changes/chg-none/apply", headers=headers)
+    held = client.post(
+        "/api/merchant/changes/chg-none/apply",
+        headers=approve(client, headers, "chg-none", "apply"),
+    )
     assert held.status_code == 200
     body = held.json()
     assert body["ok"] is False and body["change"] is None
     assert "chg-none was not staged or listed in this session" in body["reason"]
-    dismissed = client.post("/api/merchant/changes/chg-none/discard", headers=headers).json()
+    dismissed = client.post(
+        "/api/merchant/changes/chg-none/discard",
+        headers=approve(client, headers, "chg-none", "discard"),
+    ).json()
     assert dismissed["ok"] is False and "nothing to discard" in dismissed["reason"]
     record = stored()
     assert record.pending_app_events == []
@@ -413,15 +427,112 @@ def test_preview_card_buttons_report_a_hold_apart_from_an_apply(
     )
     record.state.remember_change(staged)
     sessions.save(record)
-    applied = client.post(f"/api/merchant/changes/{staged.change_id}/apply", headers=headers).json()
+    applied = client.post(
+        f"/api/merchant/changes/{staged.change_id}/apply",
+        headers=approve(client, headers, staged.change_id, "apply"),
+    ).json()
     assert applied["ok"] is True and applied["change"]["status"] == "applied"
     record = stored()
     assert record.pending_app_events == [
         f"Operator approved and applied change {staged.change_id} from the preview card."
     ]
     assert not record.state.approved_change_ids
-    again = client.post(f"/api/merchant/changes/{staged.change_id}/apply", headers=headers)
+    again = client.post(
+        f"/api/merchant/changes/{staged.change_id}/apply",
+        headers=approve(client, headers, staged.change_id, "apply"),
+    )
     assert again.status_code == 400 and len(stored().pending_app_events) == 1
+
+
+def test_a_bare_apply_or_discard_cannot_move_merchant_state(client):
+    """The reported gap: a session id alone is not an approval. Both buttons now
+    demand a capability minted for that exact click, so a direct POST is refused."""
+    headers = start_operator(client)
+    for action in ("apply", "discard"):
+        response = client.post(f"/api/merchant/changes/chg-0001/{action}", headers=headers)
+        assert response.status_code == 403
+        assert "Approval capability" in response.json()["detail"]
+
+
+def test_approval_capabilities_are_single_use_and_bound_to_the_click(client):
+    headers = start_operator(client)
+
+    def mint(change_id="chg-0001", action="apply", session=None):
+        response = client.post(
+            "/api/merchant/approvals",
+            json={"change_id": change_id, "action": action},
+            headers=session or headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["expires_in"] > 0
+        return response.json()["approval"]
+
+    def spend(token, change_id="chg-0001", action="apply", session=None, **extra):
+        return client.post(
+            f"/api/merchant/changes/{change_id}/{action}",
+            headers={**(session or headers), "X-Merchant-Approval": token, **extra},
+        )
+
+    # A capability for apply cannot be spent on discard, another change, or another session.
+    assert spend(mint(), action="discard").status_code == 403
+    assert spend(mint(), change_id="chg-0002").status_code == 403
+    assert spend(mint(), session=start_operator(client)).status_code == 403
+    # A made-up capability is refused, and a real one cannot be replayed.
+    assert spend("not-a-capability").status_code == 403
+    token = mint()
+    spend(token)
+    assert spend(token).status_code == 403
+    # The mint route validates the action rather than signing arbitrary strings.
+    assert (
+        client.post(
+            "/api/merchant/approvals",
+            json={"change_id": "chg-0001", "action": "delete-everything"},
+            headers=headers,
+        ).status_code
+        == 422
+    )
+
+
+def test_approval_gate_expires_and_enforces_an_operator_token(backend, merchant, merchant_identity):
+    """A deployment that sets COMMERCE_MERCHANT_OPERATOR_TOKEN needs the header on
+    both steps; capabilities also stop working after their TTL."""
+    from demo_common.approval import ApprovalGate
+
+    now = [0.0]
+    gate = ApprovalGate(operator_token="operator-secret", ttl=60, clock=lambda: now[0])
+    agent = MerchantAgent(
+        backend=merchant, config=merchant.config, memory_store=InMemoryMemoryStore()
+    )
+    app = FastAPI()
+    app.include_router(
+        build_merchant_router(
+            storefront=backend,
+            backend=merchant,
+            agent=agent,
+            identity=merchant_identity,
+            example_dir="contract",
+            approval_gate=gate,
+        ),
+        prefix="/api/merchant",
+    )
+    client = TestClient(app, base_url="http://localhost", client=LOOPBACK)
+    headers = start_operator(client)
+    body = {"change_id": "chg-0001", "action": "apply"}
+    assert client.post("/api/merchant/approvals", json=body, headers=headers).status_code == 403
+
+    authorized = {**headers, "X-Merchant-Operator-Token": "operator-secret"}
+    grant = client.post("/api/merchant/approvals", json=body, headers=authorized)
+    assert grant.status_code == 200
+    token = grant.json()["approval"]
+    apply_url = "/api/merchant/changes/chg-0001/apply"
+    # The operator check runs before the capability is spent, so this token survives.
+    assert (
+        client.post(apply_url, headers={**headers, "X-Merchant-Approval": token}).status_code == 403
+    )
+    now[0] = 61.0
+    expired = client.post(apply_url, headers={**authorized, "X-Merchant-Approval": token})
+    assert expired.status_code == 403
+    assert "Approval capability" in expired.json()["detail"]
 
 
 def test_orders_route_lists_the_callers_own_orders_newest_first(client):

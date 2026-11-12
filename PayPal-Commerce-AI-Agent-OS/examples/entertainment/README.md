@@ -23,8 +23,8 @@ uvicorn entertainment.api.main:app --app-dir examples --reload --port 8003
 ```
 
 Chat needs `OPENROUTER_API_KEY` in the repo-root `.env` or the environment; browsing the
-catalog and the portal's widgets do not. `MERCHANT_REQUIRE_HOST_APPROVAL=0` lets a chat
-approval apply a change; by default the preview card's button applies it.
+catalog and the portal's widgets do not. The AI auto-approves compliant changes by
+default; set `MERCHANT_REQUIRE_HOST_APPROVAL=1` to require a person's Approve click.
 
 ## Try
 
@@ -34,8 +34,8 @@ Storefront (`scripts/smoke_chat.py --vertical entertainment` runs the same three
 2. Before I commit — break down exactly what the lower bowl price is made of. What's the face value and what are the fees?
 3. OK, hold two lower bowl tickets for me while I find my card.
 
-Portal (`scripts/smoke_chat.py --vertical entertainment --merchant`; the third turn is
-refused until the change is approved on its card, and the last two follow the approval):
+Portal (`scripts/smoke_chat.py --vertical entertainment --merchant`; AI auto-approval applies
+compliant changes as they are staged — these prompts also replay in human mode):
 
 1. How is the Friday Headliner show pacing against comparable events?
 2. Release sixty of the promoter-hold seats on the Upper Terrace so they're on sale for the final stretch. Show me the release before it goes live.

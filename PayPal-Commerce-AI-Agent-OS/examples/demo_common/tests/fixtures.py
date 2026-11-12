@@ -32,6 +32,19 @@ def start_operator(client: TestClient) -> dict[str, str]:
     return {SESSION_HEADER: client.post("/api/merchant/session").json()["session_id"]}
 
 
+def approve(
+    client: TestClient, headers: dict[str, str], change_id: str, action: str
+) -> dict[str, str]:
+    """Mints the one-use capability a preview-card click sends with its apply/discard."""
+    grant = client.post(
+        "/api/merchant/approvals",
+        json={"change_id": change_id, "action": action},
+        headers=headers,
+    )
+    assert grant.status_code == 200, grant.text
+    return {**headers, "X-Merchant-Approval": grant.json()["approval"]}
+
+
 def session_record(main, headers: dict[str, str]):
     """Returns the host's session record behind ``headers``."""
     return main.host.sessions.require(headers[SESSION_HEADER])

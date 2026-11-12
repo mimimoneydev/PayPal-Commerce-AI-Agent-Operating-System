@@ -1,0 +1,18 @@
+// Root build file for opening this project in Android Studio.
+// The verified, dependency-free build is ./build.sh (uses SDK build-tools only).
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.2'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}

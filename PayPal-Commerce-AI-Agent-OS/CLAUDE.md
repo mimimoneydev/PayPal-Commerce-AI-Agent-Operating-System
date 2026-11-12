@@ -27,7 +27,7 @@ adds pytest and ruff); `scripts/install.sh` runs it.
 - One model owns the conversation; a rule goes in a tool description, the prompt, or a skill by how often it applies.
 - The static prompt and `tools[]` are the same bytes on every turn; per-request data goes in the fenced block after the breakpoint.
 - UI is presentation tool calls, validated and filled in on the server, streamed as `ui` events.
-- Third-party content is fenced data; writes are provenance-gated and capped in code; `checkout` charges nothing; merchant writes apply only through host approval.
+- Third-party content is fenced data; writes are provenance-gated and capped in code; `checkout` charges nothing; merchant writes pass guardrails and are AI auto-approved by default (human approval is opt-in).
 - Core is domain-neutral; a vertical adds UI through `PresentationExtension` and keeps the rest to itself.
 - Each mechanism is defined once, in `commerce_common` or a role core, and shared by all three paths.
 

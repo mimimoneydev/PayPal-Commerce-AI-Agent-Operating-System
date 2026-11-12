@@ -156,3 +156,39 @@ async def test_paypal_client_uses_oauth_idempotency_and_orders_v2(tmp_path):
     assert requests[1].headers["authorization"] == "Bearer token"
     assert b'"value":"7.00"' in requests[1].content
     await http.aclose()
+
+
+async def test_get_order_reads_purchase_amount_before_buyer_approval():
+    """Resume mode must be able to check a PAYER_ACTION_REQUIRED order's real money."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/oauth2/token":
+            return httpx.Response(200, json={"access_token": "token", "expires_in": 3600})
+        if request.url.path == "/v2/checkout/orders/ORDER-2":
+            return httpx.Response(
+                200,
+                json={
+                    "id": "ORDER-2",
+                    "status": "PAYER_ACTION_REQUIRED",
+                    "purchase_units": [{"amount": {"currency_code": "USD", "value": "219.00"}}],
+                    "links": [
+                        {
+                            "rel": "approve",
+                            "href": "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-2",
+                        }
+                    ],
+                },
+            )
+        raise AssertionError(request.url.path)
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client = PayPalClient(PayPalConfig(client_id="id", client_secret="secret"), http)
+    order = await client.get_order("ORDER-2")
+    assert order.status == "PAYER_ACTION_REQUIRED"
+    assert order.purchase_amount == Decimal("219.00")
+    assert order.purchase_currency == "USD"
+    # No capture exists yet, so the capture-specific fields stay empty.
+    assert order.amount is None
+    assert order.capture_id is None
+    assert order.approval_url and "checkoutnow" in order.approval_url
+    await http.aclose()

@@ -407,8 +407,9 @@ class StagedChange(BaseModel):
     """A proposed write awaiting approval of its ``change_id``. The actor stamps are
     the audit trail: ``created_by`` and ``discarded_by`` name the operator principal
     and the ``*_kind`` fields record whether the assistant acted on the operator's
-    behalf; ``applied_by`` has no assistant variant because approval is always the
-    operator's.
+    behalf; ``applied_by`` names the server principal the host stamped. Under AI
+    auto-approval the apply happens in the staging tool call and the tool result's
+    "AI auto-approved" line is the record of who authorized it.
 
     The money fields are backend-computed. ``currency`` applies to every amount in
     ``items`` and the margin fields; ``margin_before_pct`` / ``margin_after_pct`` are set

@@ -11,7 +11,7 @@ optional request controls vary by provider.
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Literal
 
 from anthropic import AsyncAnthropic
 
@@ -27,16 +27,25 @@ def openrouter_enabled() -> bool:
     return bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
 
 
-def model_config_overrides() -> dict[str, Any]:
+def model_config_overrides(
+    role: Literal["shopping", "merchant"] | None = None,
+) -> dict[str, Any]:
     """Config overrides for the selected demo provider.
 
     OpenRouter defaults to DeepSeek V4.1 Flash. Provider-specific thinking controls are
     omitted because the Anthropic-compatible endpoint does not accept Anthropic's native
     thinking block controls for every routed model.
+
+    ``OPENROUTER_SHOPPING_MODEL`` and ``OPENROUTER_MERCHANT_MODEL`` override the global
+    model for one role only: a merchant turn carries a larger prompt and more tools, so a
+    deployment can pin a faster model there without changing the storefront's behavior.
+    An unset role-specific variable keeps ``OPENROUTER_MODEL``.
     """
     if not openrouter_enabled():
         return {}
-    model = os.environ.get("OPENROUTER_MODEL", OPENROUTER_DEFAULT_MODEL).strip()
+    global_model = os.environ.get("OPENROUTER_MODEL", OPENROUTER_DEFAULT_MODEL).strip()
+    role_model = os.environ.get(f"OPENROUTER_{role.upper()}_MODEL", "").strip() if role else ""
+    model = role_model or global_model
     memory_model = os.environ.get("OPENROUTER_MEMORY_MODEL", model).strip()
     return {
         "model": model,

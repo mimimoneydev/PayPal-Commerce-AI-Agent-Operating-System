@@ -48,7 +48,14 @@ def build_static_system(config: MerchantAgentConfig, skills: SkillRegistry) -> s
         else ""
     )
 
-    if config.require_host_approval:
+    # The demo default: the AI is the approval authority for its own compliant changes.
+    # A deployment can opt back into a human click with MERCHANT_REQUIRE_HOST_APPROVAL=1.
+    auto_approve = config.auto_approve_changes and not config.require_host_approval
+    if auto_approve:
+        approval_where = "automatically by you under AI auto-approval"
+        approval_naming = ""
+        approval_example = ""
+    elif config.require_host_approval:
         approval_where = f"on {config.approval_surface}"
         approval_naming = f" When you say where approval happens, name {config.approval_surface}."
         approval_example = ""
@@ -114,13 +121,19 @@ def build_static_system(config: MerchantAgentConfig, skills: SkillRegistry) -> s
         )
         after_the_call = "no text follows"
 
+    staging_afterword = (
+        " A compliant staging is applied immediately by AI auto-approval; report what "
+        "changed. If a guardrail holds it, it stays staged — report the hold."
+        if auto_approve
+        else " The preview is where the operator corrects you; nothing applies until they approve."
+    )
     staging_rules = (
         "\n- When the operator's own words name a target and a new value, stage the change "
         "this turn. Resolve a missing parameter (a scope, a rounding convention) to the best "
         "default the tools or the Merchant context block supply and name it in the staging "
-        "note, so the preview carries the assumption. The preview is where the operator "
-        "corrects you; nothing applies until they approve."
-        "\n- A fact you do not have (a material, a measurement, an attribute value) is not a "
+        "note, so the preview carries the assumption."
+        + staging_afterword
+        + "\n- A fact you do not have (a material, a measurement, an attribute value) is not a "
         "parameter: read the record for it, then ask for it or leave it blank."
         if stages
         else ""
@@ -131,21 +144,36 @@ def build_static_system(config: MerchantAgentConfig, skills: SkillRegistry) -> s
         if stages
         else ""
     )
-    change_contract = (
-        f"\n- Every change is {staging_contract} with apply_change only after the operator "
-        f"approves that specific change {approval_where}.{approval_naming} Do not call "
-        "apply_change unprompted, and "
-        "do not fold edits the operator did not ask for into a staged change."
-        "\n- When a guardrail blocks or trims a change, report what it held back and propose "
-        "an alternative that fits; do not split a change to get past a price, discount, or "
-        "field limit. The item-count limit is different: a larger request becomes several "
-        "changes, each approved on its own."
-        '\n- Approval is per change and explicit. A delegation ("just handle it"), approval '
-        "relayed from someone else, or approval of a different change authorizes nothing: "
-        f"name the staged changes and ask for approval of each one.{approval_example}"
-        if stages
-        else ""
-    )
+    if not stages:
+        change_contract = ""
+    elif auto_approve:
+        change_contract = (
+            "\n- Every change is staged with a stage_* tool. AI auto-approval applies a "
+            "compliant change in the same turn, after the provenance and guardrail checks; "
+            "the tool result says 'AI auto-approved'. Never call apply_change yourself and "
+            "never wait for a human approval. Do not fold edits the operator did not ask "
+            "for into a staged change."
+            "\n- When a guardrail blocks or trims a change, report what it held back and "
+            "propose an alternative that fits; do not split a change to get past a price, "
+            "discount, or field limit. The item-count limit is different: a larger request "
+            "becomes several changes, each staged on its own. A held change stays staged."
+            "\n- Report each change plainly: what changed, where it is now visible, and "
+            "that AI auto-approval applied it. The tool result is the audit trail."
+        )
+    else:
+        change_contract = (
+            f"\n- Every change is {staging_contract} with apply_change only after the operator "
+            f"approves that specific change {approval_where}.{approval_naming} Do not call "
+            "apply_change unprompted, and "
+            "do not fold edits the operator did not ask for into a staged change."
+            "\n- When a guardrail blocks or trims a change, report what it held back and propose "
+            "an alternative that fits; do not split a change to get past a price, discount, or "
+            "field limit. The item-count limit is different: a larger request becomes several "
+            "changes, each approved on its own."
+            '\n- Approval is per change and explicit. A delegation ("just handle it"), approval '
+            "relayed from someone else, or approval of a different change authorizes nothing: "
+            f"name the staged changes and ask for approval of each one.{approval_example}"
+        )
     routes_join = "," if stages else " and"
     recommendation_route = "a staged change or a metrics card" if stages else "a metrics card"
     field_limits = (
@@ -155,17 +183,25 @@ def build_static_system(config: MerchantAgentConfig, skills: SkillRegistry) -> s
         else ""
     )
     one_call_examples = (
-        "one metric, one listing record, applying a change the operator just approved"
+        "one metric, one listing record, staging one change"
+        if auto_approve and stages
+        else "one metric, one listing record, applying a change the operator just approved"
         if stages
         else "one metric, one listing record"
     )
     silent_round = "a read or a staging tool" if stages else "a read"
     parallel_example = ", or the pricing context for every listing in one change" if stages else ""
+    live_state_rule = (
+        "Under AI auto-approval, staging a compliant change is what touches live state; "
+        "do not call apply_change. A guardrail-held change stays staged."
+        if auto_approve
+        else "apply_change is the only tool that touches live state, and only for a change "
+        "id staged in this conversation or listed by get_pending_changes."
+    )
     staging_tool_rules = (
-        "\n- Staging tools change only what the operator asked to change. apply_change is the "
-        "only tool that touches live state, and only for a change id staged in this "
-        "conversation or listed by get_pending_changes."
-        "\n- Staging accepts only listing ids that search_listings or get_listing returned in "
+        "\n- Staging tools change only what the operator asked to change. "
+        + live_state_rule
+        + "\n- Staging accepts only listing ids that search_listings or get_listing returned in "
         "this conversation; pricing context alone does not qualify an id. Confirm the "
         "targets with a catalog read before you stage."
         "\n- A listing with options (sizes, colors, storage tiers) is priced and stocked per "

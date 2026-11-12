@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from commerce_common.model_provider import model_config_overrides
-from demo_common import host_approval_default
+from demo_common import host_approval_default, merchant_auto_approve, merchant_latency_overrides
 from merchant_agent import MerchantAgentConfig
 from shopping_agent import ShoppingAgentConfig
 
@@ -77,7 +77,7 @@ def build_shopping_config() -> ShoppingAgentConfig:
         # The lineup is small and plan comparisons need every plan in one search.
         max_search_results=25,
         policy_intent_terms=_SHOPPING_DEFAULTS.policy_intent_terms + _POLICY_TERMS,
-        **model_config_overrides(),
+        **model_config_overrides(role="shopping"),
     )
 
 
@@ -85,8 +85,10 @@ def build_merchant_config(store_name: str) -> MerchantAgentConfig:
     return MerchantAgentConfig(
         brand_name=store_name,
         require_host_approval=host_approval_default(),
+        auto_approve_changes=merchant_auto_approve(),
         approval_surface="the Approve button on the change preview card",
         metrics_intent_terms=_MERCHANT_DEFAULTS.metrics_intent_terms + _METRICS_TERMS,
         protected_fields=_MERCHANT_DEFAULTS.protected_fields + _PROTECTED_FIELDS,
-        **model_config_overrides(),
+        **model_config_overrides(role="merchant"),
+        **merchant_latency_overrides(),
     )

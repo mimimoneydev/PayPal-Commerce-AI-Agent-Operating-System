@@ -11,6 +11,10 @@ import { Icon, type IconName } from "../icons";
 import { AskButton, Button, KindIcon, Pill, type Tone } from "../ui";
 import type { ChangeAction } from "./merchant";
 
+/** Mirrors the host's MERCHANT_REQUIRE_HOST_APPROVAL switch. AI auto-approval is the
+ * demo default; set NEXT_PUBLIC_MERCHANT_AUTO_APPROVE=0 for a human-gated deployment. */
+export const AI_AUTO_APPROVES = process.env.NEXT_PUBLIC_MERCHANT_AUTO_APPROVE !== "0";
+
 export function GenCard({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <section className={`ac-reveal overflow-hidden rounded-[14px] border border-(--line) bg-(--card) shadow-(--shadow) ${className}`}>
@@ -141,19 +145,23 @@ export function ApproveBar({
     <div className="px-3.5 pb-3.5 pt-3">
       {change.status === "staged" ? (
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="accent" size="sm" icon="check" onClick={() => onAct("apply")} disabled={busy !== null || !canAct}>
-            {busy === "apply" ? "Applying…" : "Approve"}
+          <Button variant={AI_AUTO_APPROVES ? "primary" : "accent"} size="sm" icon="check" onClick={() => onAct("apply")} disabled={busy !== null || !canAct}>
+            {busy === "apply" ? "Applying…" : AI_AUTO_APPROVES ? "Apply" : "Approve"}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => onAct("discard")} disabled={busy !== null || !canAct}>
             {busy === "discard" ? "Dismissing…" : "Dismiss"}
           </Button>
-          <span className="text-[11.5px] leading-tight text-(--ink-soft)">Nothing applies until you approve.</span>
+          <span className="text-[11.5px] leading-tight text-(--ink-soft)">
+            {AI_AUTO_APPROVES
+              ? "AI auto-applies compliant changes; guardrail-held changes wait here."
+              : "Nothing applies until you approve."}
+          </span>
         </div>
       ) : (
         <div className="flex items-center gap-2 text-[13px] text-(--ink-soft)">
           <Icon name={change.status === "applied" ? "check" : "x"} size={15} className={change.status === "applied" ? "text-(--ok)" : "text-(--ink-faint)"} />
           {change.status === "applied"
-            ? `Approved${change.applied_by ? ` by ${change.applied_by}` : ""}${change.applied_at ? ` on ${formatDate(change.applied_at)}` : ""}.`
+            ? `${AI_AUTO_APPROVES ? "AI auto-approved" : "Approved"}${change.applied_by ? ` by ${change.applied_by}` : ""}${change.applied_at ? ` on ${formatDate(change.applied_at)}` : ""}.`
             : `Dismissed${
                 change.discarded_by ? ` by ${change.discarded_by}${change.discarded_by_kind === "agent" ? "'s assistant" : ""}` : ""
               }. Nothing was changed.`}

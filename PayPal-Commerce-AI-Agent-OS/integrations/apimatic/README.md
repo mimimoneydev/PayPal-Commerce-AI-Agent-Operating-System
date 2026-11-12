@@ -33,5 +33,5 @@ npx -y @apimatic/cli@2.1.0 sdk generate \
 ```
 
 Keep generated clients under `build/`; they are consumers of the API and must not replace
-the server-side authorization, pricing, inventory, PayPal capture, or merchant approval
+the server-side authorization, pricing, inventory, PayPal capture, or merchant guardrail
 checks. Never put OpenRouter, Channel3, or PayPal secrets into an exported specification.

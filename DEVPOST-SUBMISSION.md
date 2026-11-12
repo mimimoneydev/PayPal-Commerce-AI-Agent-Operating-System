@@ -66,36 +66,53 @@ agent and a governed merchant agent, each defined once as prompt + skills + tool
 gates and run through three compatible runtimes (Messages API, Agent SDK, Managed Agents);
 four vertical demo applications (retail, travel, telecom, entertainment) across eight Next.js
 apps; a plugin that scaffolds a new commerce agent; and a safety layer covering fencing,
-provenance, memory validation, and staged human approval for every merchant write. The LLM
+provenance, memory validation, and AI auto-approval of every compliant merchant write. The LLM
 runs through OpenRouter (`deepseek/deepseek-v4.1-flash` by default). Sponsor integrations
 include Channel3 retail discovery, AG Grid analytics in the merchant control center, a Bryntum
 travel occupancy scheduler, and APIMatic-ready OpenAPI exports. The suite has 98 test files;
 `pytest` and `python scripts/check.py` validate the tool registries, prompts, manifests and
 documentation together.
 
+The same governed backend powers **three clients**. Alongside the hosted web storefront and
+merchant portal, the repository ships a native **Android app** (`com.acme.shop`, installable
+APK, `Android App/`) and a **Manifest V3 Chrome extension** (toolbar-launched shop tab,
+`Chrome extension/`). Neither bundles a catalog, a fake payment or a second backend: both call
+the identical live `/api/` contract with the same `X-Session-Id` session, SSE chat stream,
+cart, orders, memory and PayPal safety gates. On Android a `WebView` serves the bundled client
+under the shop's own HTTPS origin so all API calls are same-origin; the extension uses
+`host_permissions` and `chrome.storage.local`. The Android app passed **18/18** automated
+checks on an Android 17 emulator, and the extension passed a BrowserOS / Chrome for Testing
+functional run — both test reports and screenshots are checked in, and both clients have
+their own README with build, install and test commands.
+
 **What is genuinely new in this submission period (1 Oct – 12 Nov 2026):** the PayPal Orders
 v2 payment layer, the `create_paypal_order` agent tool and its provenance/cap gates, bounded
 auto-buy with a visible receipt, default-on sandbox checkout, the sandbox proof harness,
 commerce-platform adapters (WooCommerce, Shopify), the OpenRouter model runtime, the sponsor
-integrations, and the architecture diagram — 64 new files plus substantial changes to existing
-ones, recorded in `CHANGES.md`. The project builds on a third-party Apache-2.0-licensed
+integrations, the native Android app and Manifest V3 Chrome extension clients with their
+automated test reports and screenshots, and the architecture diagram. The core OS changes are
+recorded in `CHANGES.md`; both client applications and their test evidence are new in this
+repository. The project builds on a third-party Apache-2.0-licensed
 commerce-agent blueprint; it complies with that license (root `LICENSE`, `NOTICE`,
 `CREDITS.md`, retained source notices) and materially enhances the underlying functionality
 as the hackathon's open-source reuse rule requires.
 
 The repository README includes eight real screenshots of the running retail demo — storefront,
 fenced product cards, grounded comparison, the cap receipt card, cart, merchant workspace,
-catalog and staged-change approval — with capture provenance and a script to regenerate them.
+catalog and staged-change approval — plus screenshots of the Android app and Chrome extension,
+with capture provenance and a script to regenerate the retail set.
 The receipt frame is explicitly labelled a component fixture; it is not presented as a
 transaction.
 
 **Try it now (no install needed):** the storefront is live at
 **https://shop.mimi.money** (search, compare, add to cart) and the merchant portal at
-**https://agentos.mimi.money** (staged changes require human approval). Both hosts were
-verified responding. The hosted deployment currently runs without sandbox payment
-credentials, so the full `create → buyer approve → capture → signed webhook` path is
-reproduced with the local setup in section 6.3, not claimed on those hosts. See section 6.4
-for the exact hosted-demo state and how the receipt flow is enabled.
+**https://agentos.mimi.money** (the AI auto-applies compliant changes). Both hosts were
+verified responding, and the storefront now runs with PayPal sandbox credentials enabled:
+`GET /api/health` reports `"payments": "paypal"`. The agent loop has created one real
+sandbox order (`94818182GP238811W`, `PAYER_ACTION_REQUIRED`, `219.00 USD`) behind the
+provenance gate and spend cap. **No buyer approval, capture, or completed transaction is
+claimed** — see `SANDBOX-PROOF.md` for the honest partial state and section 6.4 for the
+exact hosted-demo status.
 
 **Scope honesty:** the verticals use fictional ACME catalogs and fixture data. This is a
 developer platform and demo, not a live merchant deployment. No real customer, real revenue,
@@ -119,7 +136,11 @@ proof/screenshots/.
 PayPal Orders v2 REST API, PayPal JavaScript SDK, PayPal Webhooks (signature verification),
 PayPal sandbox, PayPal Partner Referrals; OpenRouter / deepseek-v4.1-flash; Python 3.11+,
 FastAPI, Pydantic, SQLite, PostgreSQL/SQLAlchemy, httpx; Model Context Protocol (mcp 1.29.0);
-Next.js / TypeScript / React / Tailwind; pytest, Ruff; Channel3, AG Grid, Bryntum, APIMatic.
+Next.js / TypeScript / React / Tailwind; Android SDK (aapt2, javac, d8, zipalign, apksigner),
+Java, WebView + JavascriptInterface, Android SpeechRecognizer, Gradle / Android Studio,
+adb + Android emulator; Chrome Manifest V3 (service worker, chrome.storage.local,
+host_permissions), Web Speech API; Chrome DevTools Protocol, pytest, Ruff;
+Channel3, AG Grid / AG Studio, Bryntum, APIMatic.
 ```
 
 ## 6. Testing instructions (paste into the Devpost testing instructions field)
@@ -184,22 +205,40 @@ catalog, the product pages, and the portal widgets needs no credentials at all.
 | Surface | URL | What to do |
 |---|---|---|
 | Storefront | **https://shop.mimi.money** | Search, compare, add to cart. |
-| Merchant portal | **https://agentos.mimi.money** | Review staged changes; nothing writes until a human approves. |
+| Merchant portal | **https://agentos.mimi.money** | Ask for a price, inventory or campaign change; the AI stages, guardrail-checks and auto-applies it, with an audit line. |
 
 Both hosts need no credentials to browse. With sandbox credentials enabled, ask the shopping
 agent to buy items *"up to $X"* — the bounded auto-buy tool returns a visible receipt with
 the cap, the immutable cart hash and the PayPal order id, and nothing is charged until the
 buyer approves on PayPal's page.
 
-> **Current hosted-demo state (verified 9 Nov 2026).** Both hosts return HTTP 200, but
-> `GET https://shop.mimi.money/api/health` reports `"payments": null` and the
-> `/api/payments/paypal/...` routes are not registered. The VPS `.env` has no sandbox
-> credentials yet. To enable the full PayPal path on the hosted demo, set
-> `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENVIRONMENT=sandbox`,
-> `COMMERCE_PUBLIC_API_URL` and the OpenRouter key in
-> `PayPal-Commerce-AI-Agent-OS/.env`, restart the API service, and confirm `/api/health`
-> reports `"payments": "paypal"`. Until that is done, run section 6.3 locally for steps
-> 2–7 below. No order id or transaction is claimed for the hosted hosts.
+**Two installable clients hit the same live API** (no install needed for the hosted URLs above):
+
+| Client | Steps | Evidence |
+|---|---|---|
+| Android app | `cd "Android App" && ANDROID_HOME="$HOME/Library/Android/sdk" ./build.sh`, then `adb install -r apk/ACME-Shop.apk && adb shell am start -n com.acme.shop/.MainActivity`; or sideload the prebuilt `apk/ACME-Shop.apk` | `Android App/TEST-REPORT.md` — 18/18 CDP checks on an Android 17 emulator, results.json + 10 screenshots |
+| Chrome extension | `chrome://extensions` → Developer mode → **Load unpacked** → `Chrome extension/`; then the **A** toolbar icon or `Alt+Shift+A` | `Chrome extension/TEST-REPORT.md` — BrowserOS / Chrome for Testing functional run, screenshots |
+
+> **Current hosted-demo state (re-verified after credentials were added).** Both hosts
+> return HTTP 200. `GET https://shop.mimi.money/api/health` now reports
+> `"model": "deepseek/deepseek-v4.1-flash"` and `"payments": "paypal"`; the
+> `/api/payments/paypal/...` routes are registered and the hosted checkout page renders
+> the PayPal sandbox SDK, the amount, the cap and the immutable cart snapshot hash. The
+> merchant portal chat and its change preview cards also respond; the AI auto-applies
+> compliant changes (a human gate is opt-in with `MERCHANT_REQUIRE_HOST_APPROVAL=1`). Optional
+> integrations still needing a key: Channel3 search (`CHANNEL3_API_KEY`) and an AG Studio
+> licence (`NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY`, currently the trial build).
+>
+> A real bounded auto-buy order was created through the agent loop on the storefront:
+> `94818182GP238811W`, `219.00 USD`, cap `250.00 USD`, status `PAYER_ACTION_REQUIRED`.
+> Its hosted checkout draft has since expired. That order belongs to the hosted app's PayPal
+> REST credentials; with a different local app's credentials PayPal returns
+> `INVALID_RESOURCE_ID`, so it can only be resumed with the app that created it. A second
+> order, `4PB280312R3967053` (`10.00 USD`, `PAYER_ACTION_REQUIRED`), was created and read
+> back with the local `.env` keys, and `--resume-order` was exercised twice against it.
+> **Nothing has been approved, captured, or charged, and no capture id or signed webhook is
+> claimed.** Unfinished steps 5–7 below still require a sandbox buyer account and a
+> registered webhook tunnel. See `SANDBOX-PROOF.md` for the exact evidence.
 
 ### 6.5 What to test, in order
 
@@ -239,8 +278,13 @@ buyer approves on PayPal's page.
 7. **Full reproducible proof.** `python scripts/demo_paypal_order.py --check` (config only,
    no network), then `python scripts/demo_paypal_order.py` (opens the approval URL, waits for
    the buyer, captures, reads provider status, verifies the webhook, and writes
-   `proof/sandbox-transaction.json` + `SANDBOX-PROOF.md`). This script refuses
-   `PAYPAL_ENVIRONMENT=live` and never fabricates identifiers.
+   `proof/sandbox-transaction.json` + `SANDBOX-PROOF.md`). To finish an order that already
+   exists instead of making a second one, add
+   `--resume-order 4PB280312R3967053 --amount 10.00 --currency USD --cap 25.00` (use the
+   id belonging to whatever PayPal app your credentials belong to). It verifies the
+   provider's own purchase amount before binding any local state, is safe to re-run, and
+   never posts a second capture. This script refuses `PAYPAL_ENVIRONMENT=live` and never
+   fabricates identifiers.
 
 8. **Merchant agent and approval gate.** `python scripts/run_demo.py retail --all`, open
    `http://localhost:3100`, and ask *"What needs my attention this morning?"* followed by a
@@ -284,13 +328,16 @@ buyer approves on PayPal's page.
 - [ ] Replace the remaining `{{PLACEHOLDER}}` values: judge credentials in section 6.1,
       `{{YOUTUBE_URL}}` in section 7, and the real order / capture / event ids in section 4.
       Put judge credentials in the Devpost testing instructions field, never in the repo.
-- [ ] Enable PayPal sandbox credentials on the VPS (section 6.4) and confirm
-      `GET https://shop.mimi.money/api/health` reports `"payments": "paypal"` before judges
-      test the bounded auto-buy receipt on the hosted demo.
+- [x] PayPal sandbox credentials and the OpenRouter key are enabled on the VPS;
+      `GET https://shop.mimi.money/api/health` reports `"payments": "paypal"`. Optional
+      keys still outstanding: `CHANNEL3_API_KEY`, `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY`.
 - [ ] README screenshots are already present in `PayPal-Commerce-AI-Agent-OS/docs/screenshots/`
-      and are labelled honestly. Still to do: run one real sandbox transaction, regenerate
-      `SANDBOX-PROOF.md`, capture approval / receipt / captured-state screenshots into
-      `proof/screenshots/`, then paste the optional paragraph in section 4.
+      and are labelled honestly. Still to do: approve a pending sandbox order
+      (`4PB280312R3967053` for the local `.env` app) with the buyer account,
+      complete capture + signed webhook,
+      regenerate `SANDBOX-PROOF.md` (resume mode), capture approval / receipt /
+      captured-state screenshots into `proof/screenshots/`, then paste the optional
+      paragraph in section 4.
 - [ ] Record and publish the < 3 minute YouTube video showing the bounded auto-buy end to
       end. No third-party trademarks or copyrighted music.
 - [ ] Verify the project "functions as depicted in the video" — the rules require it.

@@ -31,7 +31,7 @@ responses.
 | `05-cart.png` | Cart panel |
 | `06-merchant-home.png` | Merchant workspace: KPIs, alerts, assistant rail |
 | `07-merchant-catalog.png` | Governed catalog view with stock and content alerts |
-| `08-staged-change-approval.png` | A staged inventory change that does nothing until a person approves it |
+| `08-staged-change-approval.png` | A merchant change preview card (shown in human-approval mode; AI auto-approval is the demo default) |
 
 To regenerate after changing the UI, start the demo and rerun the capture script. To replace
 frame 04 with a genuine transaction receipt, run one real sandbox purchase and capture the

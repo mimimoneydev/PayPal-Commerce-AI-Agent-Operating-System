@@ -5,10 +5,17 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+# Keep the unit-test suite hermetic. The demo API modules load the repo-root .env at
+# import time; with real keys on disk that enables PayPal checkout and optional paid
+# integrations during collection, and can break collection entirely when a
+# deployment-only variable is missing. Set this before ANY application import.
+os.environ.setdefault("COMMERCE_TESTING", "1")
 
 import pytest
 

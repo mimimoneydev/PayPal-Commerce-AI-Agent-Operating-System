@@ -7,6 +7,7 @@ as the storefront so an approved change shows up in the storefront at once.
     POST   /session                    start a session bound to the process's one merchant
     POST   /chat                       one assistant turn, streamed as SSE
     GET    /overview, /listings[/{id}], /alerts     the portal widgets' reads
+    POST   /approvals                  mint one short-lived capability for a preview card
     POST   /changes/{id}/apply|discard the preview card's buttons, through the same gate
                                        as the assistant's own apply/discard tools
     GET/DELETE /memory                 what the assistant remembers about the store
@@ -14,7 +15,10 @@ as the storefront so an approved change shows up in the storefront at once.
     GET    /health                     (public)
 
 The merchant identity is held server-side; a session id only proves the caller started a
-portal session. A vertical's own portal reads are passed in as ``portal_reads``.
+portal session. Approving is therefore a two-step host action: the portal asks for a
+capability bound to that session, change and action, then spends it in one click. A bare
+POST to an apply or discard route carries no capability and is refused. A vertical's own
+portal reads are passed in as ``portal_reads``.
 """
 
 # Route parameters below are annotated with dependencies built at call time, so this
@@ -24,9 +28,9 @@ import inspect
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol, cast
+from typing import Annotated, Any, Literal, Protocol, cast
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -46,6 +50,11 @@ from merchant_agent import (
 from merchant_agent.executor import MerchantToolExecutor
 from merchant_agent_runtime import MerchantAgent
 
+from .approval import (
+    APPROVAL_HEADER,
+    OPERATOR_TOKEN_HEADER,
+    ApprovalGate,
+)
 from .host import DemoStorefront, append_user_turn, stream_turn
 from .memory import install_memory_routes
 from .sessions import SessionRecord, SessionStore, session_dependency
@@ -105,6 +114,15 @@ class MerchantResetRequest(BaseModel):
     purge_memory: bool = False
 
 
+class ApprovalRequest(BaseModel):
+    change_id: str = Field(min_length=1, max_length=512)
+    action: Literal["apply", "discard"]
+
+
+ApprovalHeader = Annotated[str | None, Header(alias=APPROVAL_HEADER)]
+OperatorHeader = Annotated[str | None, Header(alias=OPERATOR_TOKEN_HEADER)]
+
+
 def _dump(model: Any) -> dict[str, Any]:
     return model.model_dump(mode="json", exclude_none=True)
 
@@ -118,13 +136,17 @@ def build_merchant_router(
     example_dir: str,
     overview_extras: Callable[[], dict[str, Any]] | None = None,
     portal_reads: Mapping[str, Callable[[], Any]] | None = None,
+    approval_gate: ApprovalGate | None = None,
 ) -> APIRouter:
     """The router above, over an agent the vertical has already constructed.
     ``overview_extras`` supplies the vertical's own home-page keys on ``/overview``;
-    ``portal_reads`` maps a path to a callable (sync or async) served as a scoped GET."""
+    ``portal_reads`` maps a path to a callable (sync or async) served as a scoped GET.
+    ``approval_gate`` is injectable so a test can control the clock; the host otherwise
+    builds one from the deployment environment."""
     memory_store = cast(MemoryStore, agent.memory.store)
     sessions: SessionStore[MerchantSessionState] = SessionStore(MerchantSessionState)
     CurrentSession = session_dependency(sessions, "/api/merchant/session")
+    gate = approval_gate or ApprovalGate.from_env()
     router = APIRouter()
 
     def context(record: MerchantRecord) -> MerchantSessionContext:
@@ -235,6 +257,30 @@ def build_merchant_router(
     for path, read in (portal_reads or {}).items():
         router.add_api_route(path, portal_route(read), methods=["GET"])
 
+    def require_operator(supplied: str | None) -> None:
+        """When a deployment configures an operator token, an authenticating proxy in
+        front of the API injects it; the browser never holds the secret."""
+        if not gate.operator_token_valid(supplied):
+            raise HTTPException(status_code=403, detail="Operator token required")
+
+    @router.post("/approvals")
+    async def issue_approval(
+        request: ApprovalRequest,
+        record: CurrentSession,
+        operator_token: OperatorHeader = None,
+    ) -> dict:
+        """Step one for a preview-card click. The capability is useless to another
+        session, another change, the other action, a replay, or after its TTL."""
+        require_operator(operator_token)
+        return {
+            "approval": gate.issue(
+                session_id=record.session_id,
+                change_id=request.change_id,
+                action=request.action,
+            ),
+            "expires_in": gate.ttl,
+        }
+
     async def change_action(change_id: str, action: str, record: MerchantRecord) -> dict:
         """``{"ok": true, "change": record}`` when the change moved; ``{"ok": false,
         "change": null, "reason": text}`` when a gate held it; 400 when the call failed.
@@ -260,10 +306,6 @@ def build_merchant_router(
             raise HTTPException(status_code=400, detail=execution.result_text)
         if execution.blocked is not None:
             return {"ok": False, "change": None, "reason": execution.result_text}
-        verb = "approved and applied" if action == "apply_change" else "dismissed"
-        record.pending_app_events.append(
-            f"Operator {verb} change {change_id} from the preview card."
-        )
         change = next(
             (
                 event.data.get("change")
@@ -272,14 +314,54 @@ def build_merchant_router(
             ),
             None,
         )
+        if change is None:
+            # Under AI auto-approval an already-applied change returns a friendly
+            # "no-op" note with no events. It must NOT be reported as a fresh approval
+            # or add a second audit line: nothing moved on this click.
+            raise HTTPException(status_code=400, detail=execution.result_text)
+        verb = "approved and applied" if action == "apply_change" else "dismissed"
+        record.pending_app_events.append(
+            f"Operator {verb} change {change_id} from the preview card."
+        )
         return {"ok": True, "change": change}
 
+    def spend_approval(
+        change_id: str,
+        action: str,
+        record: MerchantRecord,
+        approval: str | None,
+        operator_token: str | None,
+    ) -> None:
+        """Step two for a preview-card click. Refusing here keeps the change untouched,
+        so a direct POST cannot move merchant state even when the caller has a session."""
+        require_operator(operator_token)
+        if not gate.consume(
+            approval, session_id=record.session_id, change_id=change_id, action=action
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="Approval capability missing, expired or already used. "
+                "Approve from the portal's preview card (POST /api/merchant/approvals).",
+            )
+
     @router.post("/changes/{change_id:path}/apply")
-    async def apply_change(change_id: str, record: CurrentSession) -> dict:
+    async def apply_change(
+        change_id: str,
+        record: CurrentSession,
+        approval: ApprovalHeader = None,
+        operator_token: OperatorHeader = None,
+    ) -> dict:
+        spend_approval(change_id, "apply", record, approval, operator_token)
         return await change_action(change_id, "apply_change", record)
 
     @router.post("/changes/{change_id:path}/discard")
-    async def discard_change(change_id: str, record: CurrentSession) -> dict:
+    async def discard_change(
+        change_id: str,
+        record: CurrentSession,
+        approval: ApprovalHeader = None,
+        operator_token: OperatorHeader = None,
+    ) -> dict:
+        spend_approval(change_id, "discard", record, approval, operator_token)
         return await change_action(change_id, "discard_change", record)
 
     install_memory_routes(

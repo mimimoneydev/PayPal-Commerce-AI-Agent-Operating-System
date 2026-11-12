@@ -1,0 +1,129 @@
+{
+  "runAt": "2026-11-11T15:22:02.405Z",
+  "device": "sdk_gphone16k_arm64",
+  "android": "17",
+  "appVersion": "1.0.0",
+  "total": 18,
+  "passed": 18,
+  "failed": 0,
+  "results": [
+    {
+      "id": "T01",
+      "name": "App boots on shop origin with live API data",
+      "ok": true,
+      "detail": "87 products, 5 orders, 6 facts, shopper Priya, model deepseek/deepseek-v4.1-flash"
+    },
+    {
+      "id": "T02",
+      "name": "Native shell + Android shim diagnostics",
+      "ok": true,
+      "detail": "7 local assets served under https://shop.mimi.money, voice shim + bridge OK"
+    },
+    {
+      "id": "T03",
+      "name": "Assistant SSE turn: product search card + tool steps + suggestions",
+      "ok": true,
+      "detail": "1 attempt(s), cards=[products], 4 tool steps, 4 suggestions"
+    },
+    {
+      "id": "T04",
+      "name": "Product detail modal (GET /api/products/{id})",
+      "ok": true,
+      "detail": "☕ ACME EVERYDAY ACME Everyday 12-Cup Programmable Drip Coffee Maker $79.00 4.5 (2841) Wake"
+    },
+    {
+      "id": "T05",
+      "name": "Add to cart from product card (provenance gate honoured)",
+      "ok": true,
+      "detail": "item_count 0 -> 1, subtotal 79 USD"
+    },
+    {
+      "id": "T06",
+      "name": "Cart panel: lines, totals, quantity stepper drives a chat turn",
+      "ok": true,
+      "detail": "2 qty controls, item_count 1 -> 2 via agent chat, subtotal kept under host cap"
+    },
+    {
+      "id": "T07",
+      "name": "Checkout card: staged, not charged, PayPal handoff link",
+      "ok": true,
+      "detail": "subtotal shown, \"Not charged\" disclosure, handoff https://shop.mimi.money/api/payments/paypal/checkout/8I1ewHcocLN0nB1tX… (no real order created)"
+    },
+    {
+      "id": "T08",
+      "name": "Orders view: list, status chips and filters",
+      "ok": true,
+      "detail": "5 orders, filters all/transit/delayed/past, delayed filter applied"
+    },
+    {
+      "id": "T09",
+      "name": "Activity sheet shows per-turn tool trace",
+      "ok": true,
+      "detail": "Reply 3 of 3 3 STEPS · 6.7S ✓ get_fulfillment_options ok ok · 0 ms Input Result (excerpt) "
+    },
+    {
+      "id": "T10",
+      "name": "Memory sheet: PATCH round-trip with restore",
+      "ok": true,
+      "detail": "fact \"camping_experience\" edited and restored to its original value (no shared data changed)"
+    },
+    {
+      "id": "T11",
+      "name": "Settings sheet: host status, base URL, session reset",
+      "ok": true,
+      "detail": "POST /api/reset issued a new session (dcwOmZUa… -> Z2OEcAc4…), cart reset"
+    },
+    {
+      "id": "T12",
+      "name": "Suggestion chip starts a new streaming turn",
+      "ok": true,
+      "detail": "chip \"Stage it for delivery instead…\" completed with 0 chars"
+    },
+    {
+      "id": "T13",
+      "name": "Voice shim delivers native speech result into composer",
+      "ok": true,
+      "detail": "native SpeechRecognizer -> Web Speech API shim success + error paths OK"
+    },
+    {
+      "id": "T14",
+      "name": "Hardware back closes a sheet without leaving the app",
+      "ok": true,
+      "detail": "back consumed by sheet; MainActivity still resumed"
+    },
+    {
+      "id": "T15",
+      "name": "Native header buttons: settings and cart",
+      "ok": true,
+      "detail": "native header settings + cart buttons drive the WebView"
+    },
+    {
+      "id": "T16",
+      "name": "Offline path shows banner, retry reconnects",
+      "ok": true,
+      "detail": "offline banner (\"Couldn't reach the shop API at https://shop.mimi.money. Fail…\") then retry restored LIVE"
+    },
+    {
+      "id": "T17",
+      "name": "Final state: still online, no runtime exceptions",
+      "ok": true,
+      "detail": "connected, 87 products, 5 orders, 4 chat turns"
+    },
+    {
+      "id": "T18",
+      "name": "Zero JS exceptions / console errors / HTTP failures",
+      "ok": true,
+      "detail": "clean (network-disconnect noise from the offline test excluded)"
+    }
+  ],
+  "diagnostics": {
+    "consoleErrors": [
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+    ],
+    "exceptions": [],
+    "failedRequests": [
+      "net::ERR_INTERNET_DISCONNECTED: Fetch"
+    ],
+    "badResponses": []
+  }
+}

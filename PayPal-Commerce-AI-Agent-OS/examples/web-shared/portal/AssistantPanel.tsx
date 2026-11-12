@@ -11,8 +11,9 @@ import { useStickToBottom } from "../scroll";
 import { LatestPill, Transcript, type TranscriptProps } from "../Transcript";
 import type { AgentTurn } from "../turn";
 import { IconButton } from "../ui";
+import { AI_AUTO_APPROVES } from "./cards";
 
-/** Under host approval only a card's own buttons can act, so approve/dismiss chips never render. */
+/** Under human approval only a card's own buttons can act, so approve/dismiss chips never render. */
 const ACTION_CHIP = /\b(approve|apply|dismiss|discard)\b/i;
 const isPlainChip = (text: string) => !ACTION_CHIP.test(text);
 
@@ -74,7 +75,9 @@ export function AssistantPanel({
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[14px] font-semibold leading-tight text-(--ink)">{copy.title}</div>
-          <div className="truncate text-[11.5px] text-(--ink-soft)">You approve every change</div>
+          <div className="truncate text-[11.5px] text-(--ink-soft)">
+            {AI_AUTO_APPROVES ? "AI auto-approves every change" : "You approve every change"}
+          </div>
         </div>
         <ActivityButton streaming={chat.streaming} newMemoryCount={newMemoryCount} onClick={onOpenActivity} />
         {onToggleFullscreen ? (
