@@ -16,3 +16,7 @@
 /Android App/build/
 /Android App/app/build/
 /Android App/apk/*.idsig
+
+# Local-only strategy, roadmap and architecture diagrams. These are working drafts and
+# are intentionally not part of the public hackathon repository.
+/*.png
